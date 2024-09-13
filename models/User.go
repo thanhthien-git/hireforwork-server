@@ -1,0 +1,23 @@
+package models
+
+import (
+	"go.mongodb.org/mongo-driver/bson/primitive"
+)
+
+type Profile struct {
+	UserCV string   `bson:"userCV" json:"userCV"`
+	Skills []string `bson:"skills" json:"skills"`
+}
+
+type User struct {
+	FirstName     string             `bson:"careerFirstName" json:"careerFirstName" validate:"required"`
+	LastName      string             `bson:"lastName" json:"lastName" validate:"required"`
+	CareerPhone   string             `bson:"careerPhone" json:"careerPhone" validate:"required"`
+	CareerEmail   string             `bson:"careerEmail" json:"careerEmail" validate:"required"`
+	CareerPicture string             `bson:"careerPicture" json:"careerPicture"`
+	CreateAt      primitive.DateTime `bson:"createAt" json:"createAt"`
+	IsDeleted     bool               `bson:"isDeleted" json:"isDeleted"`
+	Languages     []string           `bson:"languages" json:"languages"`
+	Role          string             `bson:"role" json:"role"`
+	Profile       Profile            `bson:"profile" json:"profile"`
+}
