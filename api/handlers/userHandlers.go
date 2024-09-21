@@ -4,10 +4,17 @@ import (
 	"encoding/json"
 	"hireforwork-server/service"
 	"net/http"
+	"strconv"
 )
 
 func GetUser(w http.ResponseWriter, r *http.Request) {
-	users, err := service.GetUser()
+	pageStr := r.URL.Query().Get("page")
+	page, _ := strconv.Atoi(pageStr)
+
+	pageSizeStr := r.URL.Query().Get("pageSize")
+	pageSize, _ := strconv.Atoi(pageSizeStr)
+
+	users, err := service.GetUser(page, pageSize)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
