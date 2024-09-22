@@ -5,6 +5,7 @@ import (
 	dbHelper "hireforwork-server/db"
 	"hireforwork-server/models"
 	"log"
+	"net/http"
 	"os"
 
 	"go.mongodb.org/mongo-driver/bson"
@@ -33,7 +34,7 @@ func GetUser(page, pageSize int) (models.PaginateDocs[models.User], error) {
 	findOption.SetSkip(int64(skip))
 
 	totalDocs, _ := collection.CountDocuments(context.Background(), bson.D{})
-	cursor, err := collection.Find(context.Background(), bson.D{}, findOption)
+	cursor, err := collection.Find(context.Background(), bson.D{{"isDeleted", false}}, findOption)
 	if err != nil {
 		log.Printf("Error finding documents: %v", err)
 		return models.PaginateDocs[models.User]{}, err
@@ -63,4 +64,28 @@ func GetUserByID(careerID string) (models.User, error) {
 		return models.User{}, err
 	}
 	return user, nil
+}
+
+func DeleteUserByID(careerID string) http.Response {
+	_id, _ := primitive.ObjectIDFromHex(careerID)
+
+	filter := bson.M{"_id": _id}
+
+	update := bson.M{
+		"$set": bson.M{
+			"isDeleted": true,
+		},
+	}
+
+	opts := options.FindOneAndUpdate().SetReturnDocument(options.After)
+	result := collection.FindOneAndUpdate(context.Background(), filter, update, opts)
+
+	if result.Err() != nil {
+		return http.Response{
+			StatusCode: http.StatusBadRequest,
+		}
+	}
+	return http.Response{
+		StatusCode: http.StatusAccepted,
+	}
 }

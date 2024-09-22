@@ -2,9 +2,13 @@ package handlers
 
 import (
 	"encoding/json"
+	"hireforwork-server/interfaces"
+	"hireforwork-server/models"
 	"hireforwork-server/service"
 	"net/http"
 	"strconv"
+
+	"github.com/gorilla/mux"
 )
 
 func GetUser(w http.ResponseWriter, r *http.Request) {
@@ -28,34 +32,31 @@ func GetUser(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// func GetUserByID(w http.ResponseWriter, r *http.Request) {
-// 	client, ctx, err := dbHelper.ConnectDB()
-// 	dbHelper.ValidateError(err, w)
-// 	defer client.Disconnect(ctx)
+func GetUserByID(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
 
-// 	user, err := service.GetUserByID(r.Context(), utils.GetQueryID(r))
-// 	if err != nil {
-// 		http.Error(w, err.Error(), http.StatusNotFound)
-// 		return
-// 	}
+	user, err := service.GetUserByID(vars["id"])
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
 
-// 	w.Header().Set("Content-Type", "application/json")
-// 	err = json.NewEncoder(w).Encode(user)
-// 	if err != nil {
-// 		http.Error(w, "Failed to encode response", http.StatusInternalServerError)
-// 	}
+	response := interfaces.IResponse[models.User]{
+		Doc: user,
+	}
 
-// }
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
 
-// func DeleteUserByID(w http.ResponseWriter, r *http.Request) {
-// 	client, ctx, err := dbHelper.ConnectDB()
-// 	dbHelper.ValidateError(err, w)
-// 	defer client.Disconnect(ctx)
+	if err := json.NewEncoder(w).Encode(response); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+}
 
-// 	_, err = service.DeleteUserByID(r.Context(), utils.GetQueryID(r))
-// 	if err != nil {
-// 		http.Error(w, err.Error(), http.StatusInternalServerError)
-// 		return
-// 	}
-// 	w.WriteHeader(http.StatusOK)
-// }
+func DeleteUserByID(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	response := service.DeleteUserByID(vars["id"])
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(response.StatusCode)
+}
