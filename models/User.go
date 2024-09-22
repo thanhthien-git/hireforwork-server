@@ -10,6 +10,7 @@ type Profile struct {
 }
 
 type User struct {
+	Id            primitive.ObjectID `json:"_id" bson:"_id,omitempty"`
 	FirstName     string             `bson:"careerFirstName" json:"careerFirstName" validate:"required"`
 	LastName      string             `bson:"lastName" json:"lastName" validate:"required"`
 	CareerPhone   string             `bson:"careerPhone" json:"careerPhone" validate:"required"`
