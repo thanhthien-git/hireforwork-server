@@ -4,7 +4,9 @@ import (
 	"context"
 	dbHelper "hireforwork-server/db"
 	"hireforwork-server/models"
+	"hireforwork-server/utils"
 	"log"
+	"math"
 	"net/http"
 	"os"
 
@@ -29,11 +31,13 @@ func GetUser(page, pageSize int) (models.PaginateDocs[models.User], error) {
 
 	skip := (page - 1) * pageSize
 
-	findOption := options.Find()
+	findOption := options.Find().SetProjection(bson.D{{"password", 0}})
 	findOption.SetLimit(int64(pageSize))
 	findOption.SetSkip(int64(skip))
+	///100 documents -> 5
 
 	totalDocs, _ := collection.CountDocuments(context.Background(), bson.D{})
+	totalPage := int64(math.Ceil(float64(totalDocs) / float64(pageSize)))
 	cursor, err := collection.Find(context.Background(), bson.D{{"isDeleted", false}}, findOption)
 	if err != nil {
 		log.Printf("Error finding documents: %v", err)
@@ -50,6 +54,7 @@ func GetUser(page, pageSize int) (models.PaginateDocs[models.User], error) {
 		Docs:        users,
 		TotalDocs:   totalDocs,
 		CurrentPage: int64(page),
+		TotalPage:   totalPage,
 	}
 
 	return result, nil
@@ -88,4 +93,15 @@ func DeleteUserByID(careerID string) http.Response {
 	return http.Response{
 		StatusCode: http.StatusAccepted,
 	}
+}
+
+func CreateUser(user models.User) (models.User, error) {
+	user.Password = utils.EncodeToSHA(user.Password)
+
+	result, err := collection.InsertOne(context.Background(), user)
+	if err != nil {
+		return models.User{}, err
+	}
+	user.Id = result.InsertedID.(primitive.ObjectID)
+	return user, nil
 }

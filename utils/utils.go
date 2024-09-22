@@ -1,10 +1,12 @@
 package utils
 
 import (
+	"encoding/hex"
 	"net/http"
 
 	"github.com/gorilla/mux"
 	"go.mongodb.org/mongo-driver/bson/primitive"
+	"golang.org/x/crypto/sha3"
 )
 
 func GetQueryID(r *http.Request) primitive.ObjectID {
@@ -17,4 +19,14 @@ func GetQueryID(r *http.Request) primitive.ObjectID {
 	}
 
 	return objectID
+}
+
+func EncodeToSHA(password string) string {
+	data := []byte(password)
+
+	hash := sha3.New256()
+	hash.Write(data)
+	hashedPassword := hex.EncodeToString(hash.Sum(nil))
+
+	return hashedPassword
 }
