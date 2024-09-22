@@ -5,6 +5,7 @@ import (
 	"hireforwork-server/interfaces"
 	"hireforwork-server/models"
 	"hireforwork-server/service"
+	"io/ioutil"
 	"net/http"
 	"strconv"
 
@@ -35,12 +36,7 @@ func GetUser(w http.ResponseWriter, r *http.Request) {
 func GetUserByID(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 
-	user, err := service.GetUserByID(vars["id"])
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
+	user, _ := service.GetUserByID(vars["id"])
 	response := interfaces.IResponse[models.User]{
 		Doc: user,
 	}
@@ -59,4 +55,28 @@ func DeleteUserByID(w http.ResponseWriter, r *http.Request) {
 	response := service.DeleteUserByID(vars["id"])
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(response.StatusCode)
+}
+
+func CreateUser(w http.ResponseWriter, r *http.Request) {
+
+	var user models.User
+	body, _ := ioutil.ReadAll(r.Body)
+	if err := json.Unmarshal(body, &user); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	response, err := service.CreateUser(user)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+
+	if err := json.NewEncoder(w).Encode(response); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
 }
