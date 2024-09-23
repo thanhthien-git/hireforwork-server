@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"encoding/json"
+	"fmt"
 	"hireforwork-server/interfaces"
 	"hireforwork-server/models"
 	"hireforwork-server/service"
@@ -11,6 +12,17 @@ import (
 
 	"github.com/gorilla/mux"
 )
+
+var imageAllowedType = map[string]bool{
+	"image/jpeg": true,
+	"image/png":  true,
+	"image/jpg":  true,
+}
+
+var resumeAllowFile = map[string]bool{
+	"application/pdf": true,
+	"application/vnd.openxmlformats-officedocument.wordprocessingml.document": true,
+}
 
 func GetUser(w http.ResponseWriter, r *http.Request) {
 	pageStr := r.URL.Query().Get("page")
@@ -79,4 +91,56 @@ func CreateUser(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+}
+
+func UploadImage(w http.ResponseWriter, r *http.Request) {
+	r.ParseMultipartForm(10 << 20)
+
+	file, header, err := r.FormFile("avatar")
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	defer file.Close()
+
+	contentType := header.Header.Get("Content-Type")
+	if _, ok := imageAllowedType[contentType]; !ok {
+		http.Error(w, "Only JPEG, JPG, and PNG are allowed.", http.StatusBadRequest)
+		return
+	}
+
+	url, err := service.UploadImage(file, header, contentType)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	w.WriteHeader(http.StatusOK)
+	w.Header().Set("Content-Type", "application/json")
+	fmt.Fprintf(w, `{"url": "%s"}`, url)
+}
+
+func UploadResume(w http.ResponseWriter, r *http.Request) {
+	r.ParseMultipartForm(10 << 20)
+
+	file, header, err := r.FormFile("resume")
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	defer file.Close()
+
+	contentType := header.Header.Get("Content-Type")
+	if _, ok := resumeAllowFile[contentType]; !ok {
+		http.Error(w, "Only DOCX, PDF are allowed", http.StatusBadRequest)
+		return
+	}
+
+	url, err := service.UploadResume(file, header, contentType)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	w.WriteHeader(http.StatusOK)
+	w.Header().Set("Content-Type", "application/json")
+	fmt.Fprintf(w, `{"url": "%s"}`, url)
 }
