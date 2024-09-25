@@ -9,10 +9,13 @@ import (
 func SetUpRouter() *mux.Router {
 	router := mux.NewRouter()
 
-	//User Router
+	//---USER ROUTER---//
+	//Get router
 	router.HandleFunc("/careers", handlers.GetUser).Methods("GET")
 	router.HandleFunc("/careers/{id}", handlers.GetUserByID).Methods("GET")
+	//Delete router
 	router.HandleFunc("/careers/{id}", handlers.DeleteUserByID).Methods("DELETE")
+	//Post router
 	router.HandleFunc("/careers/create", handlers.CreateUser).Methods("POST")
 
 	//Company Router
