@@ -18,12 +18,16 @@ import (
 
 var collection *mongo.Collection
 
+var companyCollection *mongo.Collection
+
 func init() {
 	client, ctx, err := dbHelper.ConnectDB()
 	if err != nil {
 		log.Fatalf("Failed to connect to DB: %v", err)
 	}
 	collection = dbHelper.GetCollection(ctx, os.Getenv("COLLECTION_CAREER"), client)
+
+	companyCollection = dbHelper.GetCollection(ctx, os.Getenv("COLLECTION_COMPANY"), client)
 }
 
 func GetUser(page, pageSize int) (models.PaginateDocs[models.User], error) {
