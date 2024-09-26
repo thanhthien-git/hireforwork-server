@@ -45,7 +45,6 @@ func GetCompanies(page int, pageSize int) (models.PaginateDocs[models.Company], 
 		return models.PaginateDocs[models.Company]{}, err
 	}
 
-	log.Print(companies)
 	result := models.PaginateDocs[models.Company]{
 		Docs:        companies,
 		TotalDocs:   totalDocs,
