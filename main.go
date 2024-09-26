@@ -23,7 +23,7 @@ func main() {
 	handler := c.Handler(router)
 
 	// Run server
-	log.Printf("Server is running on port asdasdasdasdasdasd")
+	log.Printf("Server is running on port 8080")
 	if err := http.ListenAndServe(":8080", handler); err != nil {
 		log.Fatal(err)
 	}
