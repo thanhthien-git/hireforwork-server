@@ -2,26 +2,13 @@ package service
 
 import (
 	"context"
-	dbHelper "hireforwork-server/db"
 	"hireforwork-server/models"
 	"log"
 	"math"
-	"os"
 
 	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
-
-var jobCollection *mongo.Collection
-
-func init() {
-	client, ctx, err := dbHelper.ConnectDB()
-	if err != nil {
-		log.Fatalf("Failed to connect to DB: %v", err)
-	}
-	jobCollection = dbHelper.GetCollection(ctx, os.Getenv("COLLECTION_CAREER"), client)
-}
 
 func GetJob(page, pageSize int) (models.PaginateDocs[models.Jobs], error) {
 	var jobs []models.Jobs

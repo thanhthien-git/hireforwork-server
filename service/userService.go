@@ -17,6 +17,7 @@ import (
 )
 
 var collection *mongo.Collection
+var jobCollection *mongo.Collection
 
 func init() {
 	client, ctx, err := dbHelper.ConnectDB()
@@ -24,6 +25,7 @@ func init() {
 		log.Fatalf("Failed to connect to DB: %v", err)
 	}
 	collection = dbHelper.GetCollection(ctx, os.Getenv("COLLECTION_CAREER"), client)
+	jobCollection = dbHelper.GetCollection(ctx, os.Getenv("COLLECTION_JOB"), client)
 }
 
 func GetUser(page, pageSize int) (models.PaginateDocs[models.User], error) {
