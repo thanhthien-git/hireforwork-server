@@ -12,7 +12,7 @@ func main() {
 	router := api.SetUpRouter()
 
 	// Run server
-	log.Printf("Server is running on port asdasdasdasdasdasd")
+	log.Printf("Server is running on port 8080")
 	if err := http.ListenAndServe(":8080", router); err != nil {
 		log.Fatal(err)
 	}

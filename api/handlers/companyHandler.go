@@ -2,23 +2,23 @@ package handlers
 
 import (
 	"encoding/json"
+	"hireforwork-server/interfaces"
+	"hireforwork-server/models"
 	"hireforwork-server/service"
+	"io/ioutil"
 	"log"
 	"net/http"
 	"strconv"
+
+	"github.com/gorilla/mux"
 )
 
-// Lấy danh sách công ty với phân trang
 func GetCompaniesHandler(w http.ResponseWriter, r *http.Request) {
-	// Lấy các tham số phân trang từ query string
 	pageStr := r.URL.Query().Get("page")
 	pageSizeStr := r.URL.Query().Get("pageSize")
-
-	// Chuyển đổi từ chuỗi sang số
 	page, _ := strconv.Atoi(pageStr)
 	pageSize, _ := strconv.Atoi(pageSizeStr)
 
-	// Gọi service để lấy danh sách công ty
 	companies, err := service.GetCompanies(page, pageSize)
 	if err != nil {
 		log.Printf("Error getting companies: %v", err)
@@ -26,7 +26,78 @@ func GetCompaniesHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Trả về danh sách công ty dưới dạng JSON
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(companies)
+}
+
+func GetCompanyByID(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+
+	company, _ := service.GetCompanyByID(vars["id"])
+	response := interfaces.IResponse[models.Company]{
+		Doc: company,
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+
+	if err := json.NewEncoder(w).Encode(response); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+}
+
+func CreateCompany(w http.ResponseWriter, r *http.Request) {
+
+	var company models.Company
+	body, _ := ioutil.ReadAll(r.Body)
+	if err := json.Unmarshal(body, &company); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	response, err := service.CreateCompany(company)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+
+	if err := json.NewEncoder(w).Encode(response); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+}
+
+func DeleteCompanyByID(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	response := service.DeleteCompanyByID(vars["id"])
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(response.StatusCode)
+}
+
+func UpdateCompanyByID(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	companyID := vars["id"]
+
+	var updatedData models.Company
+	if err := json.NewDecoder(r.Body).Decode(&updatedData); err != nil {
+		http.Error(w, "Invalid request payload", http.StatusBadRequest)
+		return
+	}
+
+	updatedCompany, err := service.UpdateCompanyByID(companyID, updatedData)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	if err := json.NewEncoder(w).Encode(updatedCompany); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
 }
