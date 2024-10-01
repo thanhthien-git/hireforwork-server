@@ -24,6 +24,10 @@ var resumeAllowFile = map[string]bool{
 	"application/vnd.openxmlformats-officedocument.wordprocessingml.document": true,
 }
 
+type Handler struct {
+	AuthService *service.AuthService
+}
+
 func GetUser(w http.ResponseWriter, r *http.Request) {
 	pageStr := r.URL.Query().Get("page")
 	page, _ := strconv.Atoi(pageStr)
@@ -36,7 +40,6 @@ func GetUser(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 
@@ -143,4 +146,25 @@ func UploadResume(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 	w.Header().Set("Content-Type", "application/json")
 	fmt.Fprintf(w, `{"url": "%s"}`, url)
+}
+
+func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
+	var credential service.Credentials
+
+	err := json.NewDecoder(r.Body).Decode(&credential)
+	if err != nil {
+		http.Error(w, "Invaild request", http.StatusBadRequest)
+	}
+	if credential.Role == "career" {
+		token, err := h.AuthService.LoginForCareer(credential)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusUnauthorized)
+			return
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+
+		json.NewEncoder(w).Encode(map[string]string{"token": token})
+	}
 }
