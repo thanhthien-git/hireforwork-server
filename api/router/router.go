@@ -32,6 +32,9 @@ func SetUpRouter() *mux.Router {
 
 	//Company Router
 	router.HandleFunc("/companies", handlers.GetCompaniesHandler).Methods("GET")
+
+	//Update User Router
+	router.HandleFunc("/careers/{id}", handlers.UpdateUser).Methods("PUT")
 	router.HandleFunc("/companies/{id}", handlers.GetCompanyByID).Methods("GET")
 	router.HandleFunc("/companies/create", handlers.CreateCompany).Methods("POST")
 	router.HandleFunc("/companies/{id}", handlers.DeleteCompanyByID).Methods("DELETE")

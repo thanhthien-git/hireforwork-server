@@ -2,17 +2,20 @@ package service
 
 import (
 	"context"
+	"fmt"
+	dbHelper "hireforwork-server/db"
 	"hireforwork-server/models"
 	"hireforwork-server/utils"
 	"log"
 	"math"
 	"net/http"
+	"os"
 
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
+	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
-
 
 var collection *mongo.Collection
 var jobCollection *mongo.Collection
@@ -124,4 +127,44 @@ func CreateUser(user models.User) (models.User, error) {
 	}
 	user.Id = result.InsertedID.(primitive.ObjectID)
 	return user, nil
+}
+func UpdateUserByID(userID string, updatedUser models.User) (models.User, error) {
+	// Convert userID from string to ObjectID
+	_id, err := primitive.ObjectIDFromHex(userID)
+	if err != nil {
+		return models.User{}, fmt.Errorf("invalid user ID format: %v", err)
+	}
+
+	// Create filter to find the user by ID
+	filter := bson.M{"_id": _id, "isDeleted": false}
+
+	// Fetch the existing user to compare values
+	var existingUser models.User
+	err = userCollection.FindOne(context.Background(), filter).Decode(&existingUser)
+	if err != nil {
+		return models.User{}, fmt.Errorf("no user found with ID %s: %v", userID, err)
+	}
+
+	// Create update document to specify fields to update
+	update := bson.M{
+		"$set": bson.M{
+			"careerFirstName": updatedUser.FirstName,
+			"lastName":        updatedUser.LastName,
+			"careerEmail":     updatedUser.CareerEmail,
+		},
+	}
+
+	// Use UpdateOne to apply the update
+	result, err := userCollection.UpdateOne(context.Background(), filter, update)
+	if err != nil {
+		return models.User{}, fmt.Errorf("error updating user: %v", err)
+	}
+
+	// Check if any document was modified
+	if result.ModifiedCount == 0 {
+		return models.User{}, fmt.Errorf("no changes were made to the user with ID %s", userID)
+	}
+
+	// Return the updated user
+	return updatedUser, nil
 }

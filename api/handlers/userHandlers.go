@@ -7,6 +7,7 @@ import (
 	"hireforwork-server/models"
 	"hireforwork-server/service"
 	"io/ioutil"
+	"log"
 	"net/http"
 	"strconv"
 
@@ -167,4 +168,29 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 
 		json.NewEncoder(w).Encode(map[string]string{"token": token})
 	}
+} // UpdateUser là handler để cập nhật user theo ID
+func UpdateUser(w http.ResponseWriter, r *http.Request) {
+	// Lấy ID từ URL
+	params := mux.Vars(r)
+	id := params["id"]
+
+	log.Printf("User ID: %s", id) // Log ID để kiểm tra
+	// Giải mã JSON từ request body thành models.User
+	var user models.User
+	if err := json.NewDecoder(r.Body).Decode(&user); err != nil {
+		http.Error(w, "Invalid input", http.StatusBadRequest)
+		return
+	}
+
+	// Gọi service để cập nhật user
+	updatedUser, err := service.UpdateUserByID(id, user)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	// Trả về user đã cập nhật dưới dạng JSON
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(updatedUser)
 }
