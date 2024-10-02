@@ -34,6 +34,10 @@ type Claims struct {
 
 var userCollection *mongo.Collection
 
+
+//var companyCollection *mongo.Collection
+
+
 func init() {
 	client, ctx, err := dbHelper.ConnectDB()
 	if err != nil {
