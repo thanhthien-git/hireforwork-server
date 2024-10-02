@@ -2,9 +2,16 @@ package handlers
 
 import (
 	"encoding/json"
+	"hireforwork-server/models"
 	"hireforwork-server/service"
+	"log"
 	"net/http"
 	"strconv"
+
+	"time"
+
+	"github.com/gorilla/mux"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 func GetJob(w http.ResponseWriter, r *http.Request) {
@@ -25,5 +32,58 @@ func GetJob(w http.ResponseWriter, r *http.Request) {
 
 	if err := json.NewEncoder(w).Encode(jobs); err != nil {
 		http.Error(w, "Error encoding JSON", http.StatusInternalServerError)
+	}
+}
+
+func ApplyJob(w http.ResponseWriter, r *http.Request) {
+
+	params := mux.Vars(r)
+	jobID := params["id"]
+
+	var input struct {
+		IDCareer   string `json:"idCareer"`
+		IsAccepted string `json:"isAccepted"`
+		CreateAt   string `json:"createAt"`
+	}
+
+	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
+		http.Error(w, "Invalid input", http.StatusBadRequest)
+		log.Printf("Error decoding JSON: %v", err)
+		return
+	}
+
+	log.Printf("Received ApplyJob input: %+v", input)
+
+	userID, err := primitive.ObjectIDFromHex(input.IDCareer)
+	if err != nil {
+		http.Error(w, "Invalid career ID", http.StatusBadRequest)
+		log.Printf("Invalid career ID: %v", err)
+		return
+	}
+
+	createAt, err := time.Parse(time.RFC3339, input.CreateAt)
+	if err != nil {
+		http.Error(w, "Invalid date format", http.StatusBadRequest)
+		log.Printf("Invalid date format: %v", err)
+		return
+	}
+
+	userInfo := models.UserInfo{
+		UserId:     userID,
+		IsAccepted: input.IsAccepted,
+		CreateAt:   primitive.NewDateTimeFromTime(createAt),
+	}
+
+	updatedJob, err := service.ApplyForJob(jobID, userInfo)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		log.Printf("Error applying for job: %v", err)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	if err := json.NewEncoder(w).Encode(updatedJob); err != nil {
+		http.Error(w, "Error encoding response JSON", http.StatusInternalServerError)
 	}
 }

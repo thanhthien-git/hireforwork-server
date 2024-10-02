@@ -168,3 +168,50 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 		json.NewEncoder(w).Encode(map[string]string{"token": token})
 	}
 }
+
+func SaveJob(w http.ResponseWriter, r *http.Request) {
+	var payload struct {
+		CareerID string `json:"careerID"`
+		JobID    string `json:"jobID"`
+	}
+
+	if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
+		http.Error(w, "Invalid request payload", http.StatusBadRequest)
+		return
+	}
+
+	savedJob, err := service.SaveJob(payload.CareerID, payload.JobID)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(savedJob)
+}
+
+func CareerViewedJob(w http.ResponseWriter, r *http.Request) {
+    var payload struct {
+        CareerID string `json:"careerID"`
+        JobID    string `json:"jobID"`
+    }
+
+    if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
+        http.Error(w, "Invalid request payload", http.StatusBadRequest)
+        return
+    }
+
+    // Debugging payload
+    fmt.Printf("Received CareerID: %s, JobID: %s\n", payload.CareerID, payload.JobID)
+
+    viewedJob, err := service.CareerViewedJob(payload.CareerID, payload.JobID)
+    if err != nil {
+        http.Error(w, err.Error(), http.StatusInternalServerError)
+        return
+    }
+
+    w.Header().Set("Content-Type", "application/json")
+    w.WriteHeader(http.StatusOK)
+    json.NewEncoder(w).Encode(viewedJob)
+}
