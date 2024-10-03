@@ -20,6 +20,8 @@ import (
 var collection *mongo.Collection
 var jobCollection *mongo.Collection
 var companyCollection *mongo.Collection
+var careerSaveJob *mongo.Collection
+var careerViewedJob *mongo.Collection
 
 func init() {
 	client, ctx, err := dbHelper.ConnectDB()
@@ -31,6 +33,10 @@ func init() {
 	jobCollection = dbHelper.GetCollection(ctx, os.Getenv("COLLECTION_JOB"), client)
 
 	companyCollection = dbHelper.GetCollection(ctx, os.Getenv("COLLECTION_COMPANY"), client)
+
+	careerSaveJob = dbHelper.GetCollection(ctx, os.Getenv("COLLECTION_CAREERSAVEJOB"), client)
+
+	careerViewedJob = dbHelper.GetCollection(ctx, os.Getenv("COLLECTION_CAREERVIEWEDJOB"), client)
 
 }
 
@@ -128,6 +134,7 @@ func CreateUser(user models.User) (models.User, error) {
 	user.Id = result.InsertedID.(primitive.ObjectID)
 	return user, nil
 }
+
 func UpdateUserByID(userID string, updatedUser models.User) (models.User, error) {
 	// Convert userID from string to ObjectID
 	_id, err := primitive.ObjectIDFromHex(userID)
@@ -167,4 +174,85 @@ func UpdateUserByID(userID string, updatedUser models.User) (models.User, error)
 
 	// Return the updated user
 	return updatedUser, nil
+}
+func SaveJob(careerID string, jobID string) (models.CareerSaveJob, error) {
+	careerObjID, err := primitive.ObjectIDFromHex(careerID)
+	if err != nil {
+		return models.CareerSaveJob{}, err
+	}
+
+	jobObjID, err := primitive.ObjectIDFromHex(jobID)
+	if err != nil {
+		return models.CareerSaveJob{}, err
+	}
+
+	// Tạo đối tượng job đã lưu
+	savedJob := models.SavedJob{
+		JobID:     jobObjID,
+		IsDeleted: false,
+	}
+
+	// Cập nhật hoặc tạo mới nếu không tồn tại
+	filter := bson.M{"careerID": careerObjID}
+	update := bson.M{
+		"$addToSet": bson.M{"saveJob": savedJob},
+	}
+
+	// Cập nhật hoặc tạo mới document trong collection CareerSaveJob
+	opts := options.Update().SetUpsert(true)
+	_, err = careerSaveJob.UpdateOne(context.Background(), filter, update, opts)
+	if err != nil {
+		return models.CareerSaveJob{}, err
+	}
+
+	// Lấy lại document vừa được cập nhật
+	var careerSave models.CareerSaveJob
+	err = careerSaveJob.FindOne(context.Background(), filter).Decode(&careerSave)
+	if err != nil {
+		return models.CareerSaveJob{}, err
+	}
+
+	return careerSave, nil
+}
+
+func CareerViewedJob(careerID string, jobID string) (models.CareerViewedJob, error) {
+	careerObjID, err := primitive.ObjectIDFromHex(careerID)
+	if err != nil {
+		return models.CareerViewedJob{}, fmt.Errorf("invalid career ID: %v", err)
+	}
+
+	jobObjID, err := primitive.ObjectIDFromHex(jobID)
+	if err != nil {
+		return models.CareerViewedJob{}, fmt.Errorf("invalid job ID: %v", err)
+	}
+
+	viewedJob := models.ViewedJob{
+		JobID: jobObjID,
+	}
+
+	// Kiểm tra cập nhật document
+	filter := bson.M{"careerID": careerObjID}
+	update := bson.M{
+		"$addToSet": bson.M{"viewedJob": viewedJob}, // Add to set to avoid duplicates
+	}
+
+	opts := options.Update().SetUpsert(true)
+	result, err := careerViewedJob.UpdateOne(context.Background(), filter, update, opts)
+	if err != nil {
+		return models.CareerViewedJob{}, fmt.Errorf("failed to update viewed jobs: %v", err)
+	}
+
+	if result.MatchedCount == 0 && result.UpsertedCount == 0 {
+		return models.CareerViewedJob{}, fmt.Errorf("no document matched or inserted")
+	}
+
+	// Lấy lại document đã cập nhật
+	var careerViewed models.CareerViewedJob
+	err = careerViewedJob.FindOne(context.Background(), filter).Decode(&careerViewed)
+	if err != nil {
+		return models.CareerViewedJob{}, fmt.Errorf("failed to retrieve updated document: %v", err)
+	}
+
+	return careerViewed, nil
+
 }
