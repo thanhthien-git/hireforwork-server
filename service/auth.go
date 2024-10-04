@@ -34,10 +34,6 @@ type Claims struct {
 
 var userCollection *mongo.Collection
 
-
-//var companyCollection *mongo.Collection
-
-
 func init() {
 	client, ctx, err := dbHelper.ConnectDB()
 	if err != nil {
@@ -104,4 +100,21 @@ func (a *AuthService) LoginForCareer(credential Credentials) (string, error) {
 	}
 
 	return a.GenerateToken(career.CareerEmail)
+}
+
+func (a *AuthService) LoginForCompany(credential Credentials) (string, error) {
+	var company models.Company
+
+	err := companyCollection.FindOne(context.Background(), bson.D{
+		{"contact.companyEmail", credential.Username},
+		{"isDeleted", false},
+	}).Decode(&company)
+
+	if err != nil {
+		return "", errors.New("Invalid username or password")
+	}
+	if !a.CheckPasswordHash(company.Password, credential.Password) {
+		return "", errors.New("Wrong password")
+	}
+	return a.GenerateToken(company.Contact.CompanyEmail)
 }

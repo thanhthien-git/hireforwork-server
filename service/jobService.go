@@ -82,7 +82,7 @@ func ApplyForJob(jobID string, userInfo models.UserInfo) (models.Jobs, error) {
 
 	newApply := models.CareerApplyJob{
 		ID:        primitive.NewObjectID(),
-		CareerID:  userInfo.UserId, 
+		CareerID:  userInfo.UserId,
 		JobID:     objectID,
 		CreateAt:  primitive.NewDateTimeFromTime(time.Now()),
 		IsDeleted: false,

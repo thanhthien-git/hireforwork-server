@@ -55,7 +55,7 @@ func GetUser(page, pageSize int) (models.PaginateDocs[models.User], error) {
 	findOption.SetLimit(int64(pageSize))
 	findOption.SetSkip(int64(skip))
 
-	totalDocs, _ := userCollection.CountDocuments(context.Background(), bson.D{})
+	totalDocs, _ := userCollection.CountDocuments(context.Background(), bson.D{{"isDeleted", false}})
 	totalPage := int64(math.Ceil(float64(totalDocs) / float64(pageSize)))
 	cursor, err := userCollection.Find(context.Background(), bson.D{{"isDeleted", false}}, findOption)
 	if err != nil {

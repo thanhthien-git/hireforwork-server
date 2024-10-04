@@ -28,4 +28,5 @@ type Company struct {
 	Popularity     int                  `bson:"popularity" json:"popularity"`
 	PostJob        []primitive.ObjectID `bson:"postJob" json:"postJob"`
 	TypeOfCompany  []primitive.ObjectID `bson:"typeOfCompany" json:"typeOfCompany"`
+	Password       string               `bson:"password" json:"password"`
 }
