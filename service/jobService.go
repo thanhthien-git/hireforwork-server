@@ -41,7 +41,7 @@ func GetJob(page, pageSize int) (models.PaginateDocs[models.Jobs], error) {
 
 	totalDocs, _ := jobCollection.CountDocuments(context.Background(), bson.D{})
 	totalPage := int64(math.Ceil(float64(totalDocs) / float64(pageSize)))
-	cursor, err := jobCollection.Find(context.Background(), bson.D{{"isDeleted", true}}, findOption)
+	cursor, err := jobCollection.Find(context.Background(), bson.D{{"isDeleted", false}}, findOption)
 	if err != nil {
 		log.Printf("Error finding documents: %v", err)
 		return models.PaginateDocs[models.Jobs]{}, err
