@@ -1,1 +1,0 @@
-this file will operate function to the model
