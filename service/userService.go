@@ -52,7 +52,7 @@ func GetUser(page, pageSize int) (models.PaginateDocs[models.User], error) {
 	totalPage := int64(math.Ceil(float64(totalDocs) / float64(pageSize)))
 	cursor, err := userCollection.Find(context.Background(), bson.D{{"isDeleted", false}}, findOption)
 	if err != nil {
-		log.Printf("Error finding documents: %v", err)
+		log.Printf("Error finding document: %v", err)
 		return models.PaginateDocs[models.User]{}, err
 	}
 	defer cursor.Close(context.Background())
