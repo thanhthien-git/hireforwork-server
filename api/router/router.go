@@ -42,12 +42,14 @@ func SetUpRouter() *mux.Router {
 	//Company Router
 	router.HandleFunc("/companies/auth/login", handler.LoginCompany).Methods("POST")
 	router.HandleFunc("/companies", handlers.GetCompaniesHandler).Methods("GET")
-
-	//Update User Router
-	router.HandleFunc("/careers/{id}", handlers.UpdateUser).Methods("PUT")
 	router.HandleFunc("/companies/{id}", handlers.GetCompanyByID).Methods("GET")
 	router.HandleFunc("/companies/create", handlers.CreateCompany).Methods("POST")
 	router.HandleFunc("/companies/{id}", handlers.DeleteCompanyByID).Methods("DELETE")
 	router.HandleFunc("/companies/update/{id}", handlers.UpdateCompanyByID).Methods("PUT")
+	router.HandleFunc("/companies/{companyId}/jobs/{id}", handlers.GetCareersByJobID).Methods("GET")
+	router.HandleFunc("/companies/{id}/jobs", handlers.GetJobsByCompany).Methods("GET")
+
+	//Update User Router
+	router.HandleFunc("/careers/{id}", handlers.UpdateUser).Methods("PUT")
 	return router
 }

@@ -175,3 +175,52 @@ func UpdateCompanyByID(companyID string, updatedData models.Company) (models.Com
 
 	return updatedCompany, nil
 }
+
+func GetCareersByJobID(jobID string, companyID string) ([]models.UserInfo, error) {
+	jobObjectID, err := primitive.ObjectIDFromHex(jobID)
+	if err != nil {
+		log.Printf("Invalid job ID: %v", err)
+	}
+
+	companyObjectID, err := primitive.ObjectIDFromHex(companyID)
+	if err != nil {
+		log.Printf("Invalid company ID: %v", err)
+	}
+
+	var job models.Jobs
+	err = JobCollection.FindOne(context.Background(), bson.M{"_id": jobObjectID, "isDeleted": false, "companyID": companyObjectID}).Decode(&job)
+	if err != nil {
+		log.Printf("Error finding job %v", err)
+	}
+
+	var applicants []models.UserInfo
+	for _, application := range job.UserApply {
+		var user models.UserInfo
+		user.UserId = application.UserId
+		user.IsAccepted = application.IsAccepted
+		user.CreateAt = application.CreateAt
+
+		applicants = append(applicants, user)
+	}
+
+	return applicants, nil
+}
+
+func GetJobsByCompanyID(companyID string) ([]models.Jobs, error) {
+	companyObjectID, err := primitive.ObjectIDFromHex(companyID)
+	if err != nil {
+		log.Printf("Invalid company ID: %v", err)
+	}
+
+	var jobs []models.Jobs
+	cursor, err := JobCollection.Find(context.Background(), bson.M{"isDeleted": false, "companyID": companyObjectID})
+	if err != nil {
+		log.Printf("Error finding jobs for company: %v", err)
+	}
+
+	if err = cursor.All(context.Background(), &jobs); err != nil {
+		log.Printf("Error decoding jobs: %v", err)
+	}
+
+	return jobs, nil
+}

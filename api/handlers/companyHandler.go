@@ -122,3 +122,34 @@ func (h *Handler) LoginCompany(w http.ResponseWriter, r *http.Request) {
 		json.NewEncoder(w).Encode(map[string]string{"token": token})
 	}
 }
+
+func GetCareersByJobID(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	jobID := vars["id"]
+	companyID := vars["companyId"]
+
+	applicants, err := service.GetCareersByJobID(jobID, companyID)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(applicants)
+}
+
+func GetJobsByCompany(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+
+	jobs, err := service.GetJobsByCompanyID(vars["id"])
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	if json.NewEncoder(w).Encode(jobs); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+}
