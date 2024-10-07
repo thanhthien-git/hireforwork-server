@@ -19,7 +19,10 @@ func GetCompaniesHandler(w http.ResponseWriter, r *http.Request) {
 	page, _ := strconv.Atoi(pageStr)
 	pageSize, _ := strconv.Atoi(pageSizeStr)
 
-	companies, err := service.GetCompanies(page, pageSize)
+	companyName := r.URL.Query().Get("companyName")
+	companyEmail := r.URL.Query().Get("companyEmail")
+
+	companies, err := service.GetCompanies(page, pageSize, companyName, companyEmail)
 	if err != nil {
 		log.Printf("Error getting companies: %v", err)
 		http.Error(w, "Failed to get companies", http.StatusInternalServerError)
