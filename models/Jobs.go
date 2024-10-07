@@ -20,7 +20,7 @@ type Jobs struct {
 	IsHot           bool               `bson:"isHot" json:"isHot"`
 	IsClosed        bool               `bson:"isClosed" json:"isClosed"`
 	IsDeleted       bool               `bson:"isDeleted" json:"isDeleted"`
-	CreateAt        string             `bson:"createAt" json:"createAt"`
+	CreateAt        primitive.DateTime `bson:"createAt" json:"createAt"`
 	ExpireDate      primitive.DateTime `bson:"expireDate" json:"expireDate"`
 	CompanyID       primitive.ObjectID `bson:"companyID" json:"companyID"`
 	UserApply       []UserInfo         `bson:"userApply" json:"userApply"`
@@ -28,6 +28,4 @@ type Jobs struct {
 	Quantity        int64              `bson:"quantity" json:"quantity"`
 	JobDescription  string             `bson:"jobDescription" json:"jobDescription"`
 	JobLevel        []string           `bson:"jobLevel" json:"jobLevel"`
-	
 }
-
