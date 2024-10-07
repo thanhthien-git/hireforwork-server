@@ -40,7 +40,7 @@ func init() {
 
 }
 
-func GetUser(page, pageSize int) (models.PaginateDocs[models.User], error) {
+func GetUser(page, pageSize int, careerFirstName, lastName, careerEmail, careerPhone string) (models.PaginateDocs[models.User], error) {
 	var users []models.User
 	if page < 1 {
 		page = 1
@@ -49,15 +49,33 @@ func GetUser(page, pageSize int) (models.PaginateDocs[models.User], error) {
 		pageSize = 10
 	}
 
+	bsonFilter := bson.D{{"isDeleted", false}}
+
 	skip := (page - 1) * pageSize
 
 	findOption := options.Find().SetProjection(bson.D{{"password", 0}})
 	findOption.SetLimit(int64(pageSize))
 	findOption.SetSkip(int64(skip))
 
-	totalDocs, _ := userCollection.CountDocuments(context.Background(), bson.D{{"isDeleted", false}})
+	if careerFirstName != "" {
+		bsonFilter = append(bsonFilter, bson.E{"careerFirstName", bson.D{{"$regex", careerFirstName}, {"$options", "i"}}})
+	}
+
+	if lastName != "" {
+		bsonFilter = append(bsonFilter, bson.E{"lastName", bson.D{{"$regex", lastName}, {"$options", "i"}}})
+	}
+
+	if careerEmail != "" {
+		bsonFilter = append(bsonFilter, bson.E{"careerEmail", bson.D{{"$regex", careerEmail}, {"$options", "i"}}})
+	}
+
+	if careerPhone != "" {
+		bsonFilter = append(bsonFilter, bson.E{"careerPhone", bson.D{{"$regex", careerPhone}, {"$options", "i"}}})
+	}
+
+	totalDocs, _ := userCollection.CountDocuments(context.Background(), bsonFilter)
 	totalPage := int64(math.Ceil(float64(totalDocs) / float64(pageSize)))
-	cursor, err := userCollection.Find(context.Background(), bson.D{{"isDeleted", false}}, findOption)
+	cursor, err := userCollection.Find(context.Background(), bsonFilter, findOption)
 	if err != nil {
 		log.Printf("Error finding documents: %v", err)
 		return models.PaginateDocs[models.User]{}, err
@@ -129,7 +147,10 @@ func CreateUser(user models.User) (models.User, error) {
 
 	result, err := userCollection.InsertOne(context.Background(), user)
 	if err != nil {
-		return models.User{}, err
+		if mongo.IsDuplicateKeyError(err) {
+			return models.User{}, fmt.Errorf("Account has already been registered")
+		}
+		return models.User{}, fmt.Errorf("Something wrong")
 	}
 	user.Id = result.InsertedID.(primitive.ObjectID)
 	return user, nil
