@@ -34,14 +34,14 @@ func GetJob(page, pageSize int) (models.PaginateDocs[models.Jobs], error) {
 
 	skip := (page - 1) * pageSize
 
-	findOption := options.Find().SetProjection(bson.D{{"password", 0}})
+	findOption := options.Find()
 	findOption.SetLimit(int64(pageSize))
 	findOption.SetSkip(int64(skip))
 	///100 documents -> 5
 
 	totalDocs, _ := jobCollection.CountDocuments(context.Background(), bson.D{})
 	totalPage := int64(math.Ceil(float64(totalDocs) / float64(pageSize)))
-	cursor, err := jobCollection.Find(context.Background(), bson.D{{"isDeleted", true}}, findOption)
+	cursor, err := jobCollection.Find(context.Background(), bson.D{{"isDeleted", false}}, findOption)
 	if err != nil {
 		log.Printf("Error finding documents: %v", err)
 		return models.PaginateDocs[models.Jobs]{}, err

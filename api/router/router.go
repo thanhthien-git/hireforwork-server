@@ -31,6 +31,10 @@ func SetUpRouter() *mux.Router {
 	router.HandleFunc("/careers/{id}", handlers.GetUserByID).Methods("GET")
 	router.HandleFunc("/careers/{id}", handlers.DeleteUserByID).Methods("DELETE")
 	router.HandleFunc("/careers/create", handlers.CreateUser).Methods("POST")
+	router.HandleFunc("/careers", handlers.GetUser).Methods("GET")
+	router.HandleFunc("/careers/{id}", handlers.GetUserByID).Methods("GET")
+	router.HandleFunc("/careers/{id}", handlers.DeleteUserByID).Methods("DELETE")
+
 	//AUTH ROUTER
 	// careerRouter := router.PathPrefix("/careers").Subrouter()
 	// careerRouter.Use(middleware.JWTMiddleware(authService))
@@ -49,13 +53,15 @@ func SetUpRouter() *mux.Router {
 	//Company Router
 	// router.HandleFunc("/companies/auth/login", handler.LoginCompany).Methods("POST")
 	router.HandleFunc("/companies", handlers.GetCompaniesHandler).Methods("GET")
-
-	//Update User Router
-	router.HandleFunc("/careers/{id}", handlers.UpdateUser).Methods("PUT")
 	router.HandleFunc("/companies/{id}", handlers.GetCompanyByID).Methods("GET")
 	router.HandleFunc("/companies/create", handlers.CreateCompany).Methods("POST")
 	router.HandleFunc("/companies/{id}", handlers.DeleteCompanyByID).Methods("DELETE")
 	router.HandleFunc("/companies/update/{id}", handlers.UpdateCompanyByID).Methods("PUT")
 	router.HandleFunc("/suggest", jobHandler.GetSuggestJobs).Methods("GET") // Sử dụng JobHandler để gọi GetSuggestJobs
+	router.HandleFunc("/companies/{companyId}/jobs/{id}", handlers.GetCareersByJobID).Methods("GET")
+	router.HandleFunc("/companies/{id}/jobs", handlers.GetJobsByCompany).Methods("GET")
+
+	//Update User Router
+	router.HandleFunc("/careers/{id}", handlers.UpdateUser).Methods("PUT")
 	return router
 }

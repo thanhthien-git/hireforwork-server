@@ -19,7 +19,10 @@ func GetCompaniesHandler(w http.ResponseWriter, r *http.Request) {
 	page, _ := strconv.Atoi(pageStr)
 	pageSize, _ := strconv.Atoi(pageSizeStr)
 
-	companies, err := service.GetCompanies(page, pageSize)
+	companyName := r.URL.Query().Get("companyName")
+	companyEmail := r.URL.Query().Get("companyEmail")
+
+	companies, err := service.GetCompanies(page, pageSize, companyName, companyEmail)
 	if err != nil {
 		log.Printf("Error getting companies: %v", err)
 		http.Error(w, "Failed to get companies", http.StatusInternalServerError)
@@ -120,5 +123,36 @@ func (h *Handler) LoginCompany(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 
 		json.NewEncoder(w).Encode(map[string]string{"token": token})
+	}
+}
+
+func GetCareersByJobID(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	jobID := vars["id"]
+	companyID := vars["companyId"]
+
+	applicants, err := service.GetCareersByJobID(jobID, companyID)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(applicants)
+}
+
+func GetJobsByCompany(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+
+	jobs, err := service.GetJobsByCompanyID(vars["id"])
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	if json.NewEncoder(w).Encode(jobs); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
 	}
 }

@@ -1,3 +1,5 @@
 .env
 
-firebaseconfig.json
+/firebaseconfig.json
+.vercel
+/hireforwork-server.exe

@@ -14,7 +14,7 @@ import (
 )
 
 // Lấy danh sách company với phân trang
-func GetCompanies(page int, pageSize int) (models.PaginateDocs[models.Company], error) {
+func GetCompanies(page int, pageSize int, companyName, companyEmail string) (models.PaginateDocs[models.Company], error) {
 	var companies []models.Company
 
 	if page < 1 {
@@ -26,16 +26,25 @@ func GetCompanies(page int, pageSize int) (models.PaginateDocs[models.Company], 
 
 	skip := (page - 1) * pageSize
 
+	bsonFilter := bson.D{{"isDeleted", false}}
+
+	if companyName != "" {
+		bsonFilter = append(bsonFilter, bson.E{"companyName", bson.D{{"$regex", companyName}, {"$options", "i"}}})
+	}
+
+	if companyEmail != "" {
+		bsonFilter = append(bsonFilter, bson.E{"contact.companyEmail", bson.D{{"$regex", companyEmail}, {"$options", "i"}}})
+	}
+
 	// Cấu hình phân trang
-	findOptions := options.Find()
+	findOptions := options.Find().SetSort(bson.D{{"companyName", 1}})
 	findOptions.SetLimit(int64(pageSize))
 	findOptions.SetSkip(int64(skip))
 
 	// Thực hiện truy vấn với phân trang
-	totalDocs, _ := companyCollection.CountDocuments(context.Background(), bson.D{{"isDeleted", false}})
+	totalDocs, _ := companyCollection.CountDocuments(context.Background(), bsonFilter)
 	totalPage := int64(math.Ceil(float64(totalDocs) / float64(pageSize)))
-	cursor, err := companyCollection.Find(context.Background(), bson.D{{"isDeleted", false}}, findOptions)
-	log.Print(cursor)
+	cursor, err := companyCollection.Find(context.Background(), bsonFilter, findOptions)
 	if err != nil {
 		log.Printf("Error finding documents: %v", err)
 		return models.PaginateDocs[models.Company]{}, err
@@ -144,9 +153,6 @@ func UpdateCompanyByID(companyID string, updatedData models.Company) (models.Com
 	if updatedData.EmployeeSize != 0 {
 		updateFields["employeeSize"] = updatedData.EmployeeSize
 	}
-	if len(updatedData.FieldOperation) > 0 {
-		updateFields["fieldOperation"] = updatedData.FieldOperation
-	}
 	if updatedData.Popularity != 0 {
 		updateFields["popularity"] = updatedData.Popularity
 	}
@@ -174,4 +180,53 @@ func UpdateCompanyByID(companyID string, updatedData models.Company) (models.Com
 	}
 
 	return updatedCompany, nil
+}
+
+func GetCareersByJobID(jobID string, companyID string) ([]models.UserInfo, error) {
+	jobObjectID, err := primitive.ObjectIDFromHex(jobID)
+	if err != nil {
+		log.Printf("Invalid job ID: %v", err)
+	}
+
+	companyObjectID, err := primitive.ObjectIDFromHex(companyID)
+	if err != nil {
+		log.Printf("Invalid company ID: %v", err)
+	}
+
+	var job models.Jobs
+	err = JobCollection.FindOne(context.Background(), bson.M{"_id": jobObjectID, "isDeleted": false, "companyID": companyObjectID}).Decode(&job)
+	if err != nil {
+		log.Printf("Error finding job %v", err)
+	}
+
+	var applicants []models.UserInfo
+	for _, application := range job.UserApply {
+		var user models.UserInfo
+		user.UserId = application.UserId
+		user.IsAccepted = application.IsAccepted
+		user.CreateAt = application.CreateAt
+
+		applicants = append(applicants, user)
+	}
+
+	return applicants, nil
+}
+
+func GetJobsByCompanyID(companyID string) ([]models.Jobs, error) {
+	companyObjectID, err := primitive.ObjectIDFromHex(companyID)
+	if err != nil {
+		log.Printf("Invalid company ID: %v", err)
+	}
+
+	var jobs []models.Jobs
+	cursor, err := JobCollection.Find(context.Background(), bson.M{"isDeleted": false, "companyID": companyObjectID})
+	if err != nil {
+		log.Printf("Error finding jobs for company: %v", err)
+	}
+
+	if err = cursor.All(context.Background(), &jobs); err != nil {
+		log.Printf("Error decoding jobs: %v", err)
+	}
+
+	return jobs, nil
 }
