@@ -230,3 +230,37 @@ func GetJobsByCompanyID(companyID string) ([]models.Jobs, error) {
 
 	return jobs, nil
 }
+
+func DeleteJobByID(companyID string, jobID string) error {
+	// Chuyển đổi jobID và companyID sang ObjectID
+	jobObjectID, err := primitive.ObjectIDFromHex(jobID)
+	if err != nil {
+		log.Printf("Invalid job ID: %v", err)
+		return errors.New("invalid job ID")
+	}
+
+	companyObjectID, err := primitive.ObjectIDFromHex(companyID)
+	if err != nil {
+		log.Printf("Invalid company ID: %v", err)
+		return errors.New("invalid company ID")
+	}
+
+	// Kiểm tra xem công việc có tồn tại và thuộc về công ty hay không
+	filter := bson.M{"_id": jobObjectID, "companyID": companyObjectID, "isDeleted": false}
+	update := bson.M{
+		"$set": bson.M{
+			"isDeleted": true,
+		},
+	}
+
+	opts := options.FindOneAndUpdate().SetReturnDocument(options.After)
+
+	var updatedJob models.Jobs
+	err = JobCollection.FindOneAndUpdate(context.Background(), filter, update, opts).Decode(&updatedJob)
+	if err != nil {
+		log.Printf("Error deleting job: %v", err)
+		return errors.New("you do not have permission to delete this job")
+	}
+
+	return nil
+}
