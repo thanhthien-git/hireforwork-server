@@ -2,17 +2,19 @@ package service
 
 import (
 	"context"
+	dbHelper "hireforwork-server/db"
 	"hireforwork-server/models"
 	"hireforwork-server/utils"
 	"log"
 	"math"
 	"net/http"
+	"os"
 
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
+	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
-
 
 var collection *mongo.Collection
 var jobCollection *mongo.Collection
