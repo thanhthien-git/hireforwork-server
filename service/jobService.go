@@ -18,6 +18,7 @@ import (
 
 var JobCollection *mongo.Collection
 var CareerApplyJobCollection *mongo.Collection
+var CareerSaveJobCollection *mongo.Collection
 
 func init() {
 	client, ctx, err := dbHelper.ConnectDB()
@@ -27,6 +28,7 @@ func init() {
 
 	JobCollection = dbHelper.GetCollection(ctx, os.Getenv("COLLECTION_JOB"), client)
 	CareerApplyJobCollection = dbHelper.GetCollection(ctx, os.Getenv("COLLECTION_CAREERAPPLYJOB"), client)
+	CareerSaveJobCollection = dbHelper.GetCollection(ctx, os.Getenv("COLLECTION_CAREERSAVEJOB"), client)
 
 }
 func GetJob(page, pageSize int) (models.PaginateDocs[models.Jobs], error) {
@@ -97,4 +99,41 @@ func ApplyForJob(jobID string, userInfo models.UserInfo) (models.Jobs, error) {
 
 	// Return updated job
 	return job, nil
+}
+
+func GetSavedJobsByCareerID(careerID string) ([]struct {
+	JobID     string `json:"jobID"`
+	IsDeleted bool   `json:"isDeleted"`
+}, error) {
+	CareerID, err := primitive.ObjectIDFromHex(careerID)
+	if err != nil {
+		log.Printf("Invalid career ID: %v", err)
+		return nil, err
+	}
+
+	var careerSave models.CareerSaveJob
+	err = CareerSaveJobCollection.FindOne(context.Background(), bson.M{"careerID": CareerID}).Decode(&careerSave)
+	if err != nil {
+		log.Printf("Error finding CareerSaveJob: %v", err)
+		return nil, err
+	}
+
+	var savedJobsResponse []struct {
+		JobID     string `json:"jobID"`
+		IsDeleted bool   `json:"isDeleted"`
+	}
+
+	for _, job := range careerSave.SaveJob {
+		if !job.IsDeleted {
+			savedJobsResponse = append(savedJobsResponse, struct {
+				JobID     string `json:"jobID"`
+				IsDeleted bool   `json:"isDeleted"`
+			}{
+				JobID:     job.JobID.Hex(),
+				IsDeleted: job.IsDeleted,
+			})
+		}
+	}
+
+	return savedJobsResponse, nil
 }
