@@ -2,10 +2,12 @@ package utils
 
 import (
 	"encoding/hex"
+	"errors"
 	"net/http"
 
 	"github.com/gorilla/mux"
 	"go.mongodb.org/mongo-driver/bson/primitive"
+	"go.mongodb.org/mongo-driver/mongo"
 	"golang.org/x/crypto/sha3"
 )
 
@@ -29,4 +31,16 @@ func EncodeToSHA(password string) string {
 	hashedPassword := hex.EncodeToString(hash.Sum(nil))
 
 	return hashedPassword
+}
+
+func IsDup(err error) bool {
+	var e mongo.WriteException
+	if errors.As(err, &e) {
+		for _, we := range e.WriteErrors {
+			if we.Code == 11000 {
+				return true
+			}
+		}
+	}
+	return false
 }

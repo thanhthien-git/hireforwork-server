@@ -2,7 +2,6 @@ package api
 
 import (
 	"hireforwork-server/api/handlers"
-	"hireforwork-server/middleware"
 	"hireforwork-server/service"
 	"os"
 
@@ -24,12 +23,16 @@ func SetUpRouter() *mux.Router {
 	//PUBLIC ROUTER//
 	router.HandleFunc("/careers/auth/login", handler.Login).Methods("POST")
 	router.HandleFunc("/careers/create", handlers.CreateUser).Methods("POST")
+	router.HandleFunc("/careers", handlers.GetUser).Methods("GET")
+	router.HandleFunc("/careers/{id}", handlers.GetUserByID).Methods("GET")
+	router.HandleFunc("/careers/{id}", handlers.DeleteUserByID).Methods("DELETE")
+
 	//AUTH ROUTER
-	careerRouter := router.PathPrefix("/careers").Subrouter()
-	careerRouter.Use(middleware.JWTMiddleware(authService))
-	careerRouter.HandleFunc("", handlers.GetUser).Methods("GET")
-	careerRouter.HandleFunc("/{id}", handlers.GetUserByID).Methods("GET")
-	careerRouter.HandleFunc("/{id}", handlers.DeleteUserByID).Methods("DELETE")
+	// careerRouter := router.PathPrefix("/careers").Subrouter()
+	// careerRouter.Use(middleware.JWTMiddleware(authService))
+	// careerRouter.HandleFunc("", handlers.GetUser).Methods("GET")
+	// careerRouter.HandleFunc("/{id}", handlers.GetUserByID).Methods("GET")
+	// careerRouter.HandleFunc("/{id}", handlers.DeleteUserByID).Methods("DELETE")
 
 	//Post router
 	router.HandleFunc("/careers/savejob", handlers.SaveJob).Methods("POST")

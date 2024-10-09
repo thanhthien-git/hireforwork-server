@@ -34,7 +34,7 @@ func GetJob(page, pageSize int) (models.PaginateDocs[models.Jobs], error) {
 
 	skip := (page - 1) * pageSize
 
-	findOption := options.Find().SetProjection(bson.D{{"password", 0}})
+	findOption := options.Find()
 	findOption.SetLimit(int64(pageSize))
 	findOption.SetSkip(int64(skip))
 	///100 documents -> 5

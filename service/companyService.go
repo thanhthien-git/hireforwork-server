@@ -14,7 +14,8 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
-func GetCompanies(page int, pageSize int) (models.PaginateDocs[models.Company], error) {
+func GetCompanies(page int, pageSize int, companyName, companyEmail string) (models.PaginateDocs[models.Company], error) {
+
 	var companies []models.Company
 
 	if page < 1 {
@@ -26,14 +27,26 @@ func GetCompanies(page int, pageSize int) (models.PaginateDocs[models.Company], 
 
 	skip := (page - 1) * pageSize
 
-	findOptions := options.Find().SetProjection(bson.D{{"password", 0}})
+	bsonFilter := bson.D{{"isDeleted", false}}
+
+	if companyName != "" {
+		bsonFilter = append(bsonFilter, bson.E{"companyName", bson.D{{"$regex", companyName}, {"$options", "i"}}})
+	}
+
+	if companyEmail != "" {
+		bsonFilter = append(bsonFilter, bson.E{"contact.companyEmail", bson.D{{"$regex", companyEmail}, {"$options", "i"}}})
+	}
+
+	// Cấu hình phân trang
+	findOptions := options.Find().SetSort(bson.D{{"companyName", 1}})
 	findOptions.SetLimit(int64(pageSize))
 	findOptions.SetSkip(int64(skip))
 
-	totalDocs, _ := companyCollection.CountDocuments(context.Background(), bson.D{{"isDeleted", false}})
+	findOptions.SetProjection(bson.D{{"password", 0}})
+
+	totalDocs, _ := companyCollection.CountDocuments(context.Background(), bsonFilter)
 	totalPage := int64(math.Ceil(float64(totalDocs) / float64(pageSize)))
-	cursor, err := companyCollection.Find(context.Background(), bson.D{{"isDeleted", false}}, findOptions)
-	log.Print(cursor)
+	cursor, err := companyCollection.Find(context.Background(), bsonFilter, findOptions)
 	if err != nil {
 		log.Printf("Error finding documents: %v", err)
 		return models.PaginateDocs[models.Company]{}, err
