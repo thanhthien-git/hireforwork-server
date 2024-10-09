@@ -10,10 +10,10 @@ import (
 
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
+	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
-// Lấy danh sách company với phân trang
 func GetCompanies(page int, pageSize int) (models.PaginateDocs[models.Company], error) {
 	var companies []models.Company
 
@@ -26,12 +26,10 @@ func GetCompanies(page int, pageSize int) (models.PaginateDocs[models.Company], 
 
 	skip := (page - 1) * pageSize
 
-	// Cấu hình phân trang
-	findOptions := options.Find()
+	findOptions := options.Find().SetProjection(bson.D{{"password", 0}})
 	findOptions.SetLimit(int64(pageSize))
 	findOptions.SetSkip(int64(skip))
 
-	// Thực hiện truy vấn với phân trang
 	totalDocs, _ := companyCollection.CountDocuments(context.Background(), bson.D{{"isDeleted", false}})
 	totalPage := int64(math.Ceil(float64(totalDocs) / float64(pageSize)))
 	cursor, err := companyCollection.Find(context.Background(), bson.D{{"isDeleted", false}}, findOptions)
@@ -61,7 +59,9 @@ func GetCompanyByID(companyID string) (models.Company, error) {
 	_id, _ := primitive.ObjectIDFromHex(companyID)
 	var company models.Company
 
-	err := companyCollection.FindOne(context.Background(), bson.D{{"_id", _id}}).Decode(&company)
+	findOptions := options.FindOne().SetProjection(bson.D{{"password", 0}})
+
+	err := companyCollection.FindOne(context.Background(), bson.D{{"_id", _id}}, findOptions).Decode(&company)
 	if err != nil {
 		return models.Company{}, err
 	}
@@ -102,78 +102,36 @@ func DeleteCompanyByID(companyID string) http.Response {
 	}
 }
 
-func UpdateCompanyByID(companyID string, updatedData models.Company) (models.Company, error) {
+func UpdateCompanyByID(companyID string, updatedCompany models.Company) (models.Company, error) {
 	_id, err := primitive.ObjectIDFromHex(companyID)
 	if err != nil {
-		return models.Company{}, err
+		return models.Company{}, errors.New("invalid company ID format")
 	}
 
 	filter := bson.M{"_id": _id, "isDeleted": false}
 
-	updateFields := bson.M{}
-
-	if updatedData.CompanyImage.ImageURL != "" {
-		updateFields["companyImage.imageURL"] = updatedData.CompanyImage.ImageURL
-	}
-	if updatedData.CompanyImage.CoverURL != "" {
-		updateFields["companyImage.coverURL"] = updatedData.CompanyImage.CoverURL
-	}
-
-	if updatedData.Contact.CompanyPhone != "" {
-		updateFields["contact.companyPhone"] = updatedData.Contact.CompanyPhone
-	}
-	if updatedData.Contact.CompanyEmail != "" {
-		updateFields["contact.companyEmail"] = updatedData.Contact.CompanyEmail
-	}
-	if updatedData.Contact.CompanyWebsite != "" {
-		updateFields["contact.companyWebsite"] = updatedData.Contact.CompanyWebsite
-	}
-	if updatedData.Contact.CompanyAddress != "" {
-		updateFields["contact.companyAddress"] = updatedData.Contact.CompanyAddress
-	}
-
-	if updatedData.CompanyName != "" {
-		updateFields["companyName"] = updatedData.CompanyName
-	}
-	if updatedData.CompanyViewed != 0 {
-		updateFields["companyViewed"] = updatedData.CompanyViewed
-	}
-	if updatedData.Description != "" {
-		updateFields["description"] = updatedData.Description
-	}
-	if updatedData.EmployeeSize != 0 {
-		updateFields["employeeSize"] = updatedData.EmployeeSize
-	}
-	if len(updatedData.FieldOperation) > 0 {
-		updateFields["fieldOperation"] = updatedData.FieldOperation
-	}
-	if updatedData.Popularity != 0 {
-		updateFields["popularity"] = updatedData.Popularity
-	}
-	if len(updatedData.PostJob) > 0 {
-		updateFields["postJob"] = updatedData.PostJob
-	}
-	if len(updatedData.TypeOfCompany) > 0 {
-		updateFields["typeOfCompany"] = updatedData.TypeOfCompany
-	}
-
-	if len(updateFields) == 0 {
-		return models.Company{}, errors.New("no fields to update")
-	}
-
 	update := bson.M{
-		"$set": updateFields,
+		"$set": bson.M{
+			"companyName":   updatedCompany.CompanyName,
+			"companyImage":  updatedCompany.CompanyImage,
+			"contact":       updatedCompany.Contact,
+			"description":   updatedCompany.Description,
+			"typeOfCompany": updatedCompany.TypeOfCompany,
+		},
 	}
 
 	opts := options.FindOneAndUpdate().SetReturnDocument(options.After)
 
-	var updatedCompany models.Company
-	err = companyCollection.FindOneAndUpdate(context.Background(), filter, update, opts).Decode(&updatedCompany)
+	var updatedDoc models.Company
+	err = companyCollection.FindOneAndUpdate(context.Background(), filter, update, opts).Decode(&updatedDoc)
 	if err != nil {
+		if err == mongo.ErrNoDocuments {
+			return models.Company{}, errors.New("company not found or already deleted")
+		}
 		return models.Company{}, err
 	}
 
-	return updatedCompany, nil
+	return updatedDoc, nil
 }
 
 func GetCareersByJobID(jobID string, companyID string) ([]models.UserInfo, error) {
