@@ -137,3 +137,15 @@ func GetSavedJobsByCareerID(careerID string) ([]struct {
 
 	return savedJobsResponse, nil
 }
+
+func GetJobApplyHistoryByCareerID(careerID string) (models.CareerApplyJob, error) {
+	CareerID, err := primitive.ObjectIDFromHex(careerID)
+	var applyJobs models.CareerApplyJob
+	filter := bson.M{"careerID": CareerID, "isDeleted": false}
+	err = CareerApplyJobCollection.FindOne(context.Background(), filter).Decode(&applyJobs)
+	if err != nil {
+		log.Printf("Error for job history: %v", err)
+		return models.CareerApplyJob{}, err
+	}
+	return applyJobs, nil
+}

@@ -38,6 +38,9 @@ func SetUpRouter() *mux.Router {
 	router.HandleFunc("/careers/savejob", handlers.SaveJob).Methods("POST")
 	router.HandleFunc("/careers/viewedjob", handlers.CareerViewedJob).Methods("POST")
 
+	//get list of user's job apply history
+	router.HandleFunc("/careers/{careerID}/job-apply-history", handlers.GetJobApplyHistoryByCareerID).Methods("GET")
+
 	//Get list of user's save job
 	router.HandleFunc("/careers/{careerID}/savedjobs", handlers.GetSavedJobs).Methods("GET")
 	//Job Router

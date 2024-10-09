@@ -104,3 +104,25 @@ func GetSavedJobs(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(savedJobs)
 }
+
+func GetJobApplyHistoryByCareerID(w http.ResponseWriter, r *http.Request) {
+	// Lấy careerID từ URL
+	vars := mux.Vars(r)
+
+	// Gọi service để lấy danh sách công việc mà người dùng đã apply
+	jobApplyHistory, err := service.GetJobApplyHistoryByCareerID(vars["careerID"])
+	if err != nil {
+		if err == mongo.ErrNoDocuments {
+			http.Error(w, "No job apply history found for this user", http.StatusNotFound)
+		} else {
+			http.Error(w, "Error retrieving job apply history", http.StatusInternalServerError)
+		}
+		return
+	}
+
+	// Trả về danh sách dưới dạng JSON
+	w.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(jobApplyHistory); err != nil {
+		http.Error(w, "Error encoding JSON response", http.StatusInternalServerError)
+	}
+}
