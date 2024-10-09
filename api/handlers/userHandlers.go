@@ -36,7 +36,14 @@ func GetUser(w http.ResponseWriter, r *http.Request) {
 	pageSizeStr := r.URL.Query().Get("pageSize")
 	pageSize, _ := strconv.Atoi(pageSizeStr)
 
-	users, err := service.GetUser(page, pageSize)
+	careerFirstName := r.URL.Query().Get("careerFirstName")
+	lastName := r.URL.Query().Get("lastName")
+	careerEmail := r.URL.Query().Get("careerEmail")
+	careerPhone := r.URL.Query().Get("careerPhone")
+
+	fmt.Printf(lastName)
+
+	users, err := service.GetUser(page, pageSize, careerFirstName, lastName, careerEmail, careerPhone)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
