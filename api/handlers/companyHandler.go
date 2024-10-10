@@ -156,3 +156,21 @@ func GetJobsByCompany(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 }
+
+func DeleteJobByID(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	companyID := vars["companyId"]
+	jobID := vars["jobId"]
+
+	// Xóa job nếu companyID khớp với companyID của job
+	err := service.DeleteJobByID(companyID, jobID)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		log.Printf("Error deleting job: %v", err)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte(`{"message": "Job deleted successfully"}`))
+}
