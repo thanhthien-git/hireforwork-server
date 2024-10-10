@@ -248,3 +248,19 @@ func CareerViewedJob(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(viewedJob)
 }
+
+func RemoveSaveJobHandler(w http.ResponseWriter, r *http.Request) {
+
+	vars := mux.Vars(r)
+	careerID := vars["careerID"]
+	jobID := vars["jobID"]
+
+	updatedCareerSaveJob, err := service.RemoveSaveJob(careerID, jobID)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(updatedCareerSaveJob)
+}
