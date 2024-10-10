@@ -98,3 +98,35 @@ func ApplyForJob(jobID string, userInfo models.UserInfo) (models.Jobs, error) {
 	// Return updated job
 	return job, nil
 }
+
+type JobService struct {
+	Collection *mongo.Collection
+}
+
+func NewJobService(db *mongo.Database) *JobService {
+	return &JobService{
+		Collection: db.Collection("Job"),
+	}
+}
+
+func (s *JobService) GetLatestJobs() ([]models.Jobs, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	// Lọc và sắp xếp công việc
+	filter := bson.M{"isDeleted": false, "isClosed": false}
+	opts := options.Find().SetSort(bson.D{{"createAt", -1}}).SetLimit(10)
+
+	cursor, err := s.Collection.Find(ctx, filter, opts)
+	if err != nil {
+		return nil, err
+	}
+	defer cursor.Close(ctx)
+
+	var jobs []models.Jobs
+	if err := cursor.All(ctx, &jobs); err != nil {
+		return nil, err
+	}
+
+	return jobs, nil
+}

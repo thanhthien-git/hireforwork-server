@@ -28,6 +28,4 @@ type Jobs struct {
 	Quantity        int64              `bson:"quantity" json:"quantity"`
 	JobDescription  string             `bson:"jobDescription" json:"jobDescription"`
 	JobLevel        []string           `bson:"jobLevel" json:"jobLevel"`
-	
 }
-
