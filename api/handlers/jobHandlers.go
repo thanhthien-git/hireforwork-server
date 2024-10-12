@@ -91,6 +91,7 @@ func ApplyJob(w http.ResponseWriter, r *http.Request) {
 func GetSavedJobs(w http.ResponseWriter, r *http.Request) {
 
 	vars := mux.Vars(r)
+
 	savedJobs, err := service.GetSavedJobsByCareerID(vars["careerID"])
 	if err != nil {
 		if err == mongo.ErrNoDocuments {
@@ -103,22 +104,3 @@ func GetSavedJobs(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(savedJobs)
 }
-
-// func GetJobApplyHistoryByCareerID(w http.ResponseWriter, r *http.Request) {
-// 	vars := mux.Vars(r)
-
-// 	jobApplyHistory, err := service.GetJobApplyHistoryByCareerID(vars["careerID"])
-// 	if err != nil {
-// 		if err == mongo.ErrNoDocuments {
-// 			http.Error(w, "No job apply history found for this user", http.StatusNotFound)
-// 		} else {
-// 			http.Error(w, "Error retrieving job apply history", http.StatusInternalServerError)
-// 		}
-// 		return
-// 	}
-
-// 	w.Header().Set("Content-Type", "application/json")
-// 	if err := json.NewEncoder(w).Encode(jobApplyHistory); err != nil {
-// 		http.Error(w, "Error encoding JSON response", http.StatusInternalServerError)
-// 	}
-// }
