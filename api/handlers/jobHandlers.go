@@ -11,6 +11,7 @@ import (
 
 	"github.com/gorilla/mux"
 	"go.mongodb.org/mongo-driver/bson/primitive"
+	"go.mongodb.org/mongo-driver/mongo"
 )
 
 func GetJob(w http.ResponseWriter, r *http.Request) {
@@ -86,6 +87,22 @@ func ApplyJob(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Error encoding response JSON", http.StatusInternalServerError)
 	}
 }
+func GetSavedJobs(w http.ResponseWriter, r *http.Request) {
+
+	vars := mux.Vars(r)
+
+	savedJobs, err := service.GetSavedJobsByCareerID(vars["careerID"])
+	if err != nil {
+		if err == mongo.ErrNoDocuments {
+			http.Error(w, "No saved jobs found for this user", http.StatusNotFound)
+		} else {
+			http.Error(w, "Error retrieving saved jobs", http.StatusInternalServerError)
+		}
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(savedJobs)
+}
 
 type JobHandler struct {
 	JobService *service.JobService
@@ -104,4 +121,5 @@ func (h *JobHandler) GetSuggestJobs(w http.ResponseWriter, r *http.Request) {
 	if err := json.NewEncoder(w).Encode(jobs); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
+
 }
