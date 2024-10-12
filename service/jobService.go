@@ -100,6 +100,7 @@ func ApplyForJob(jobID string, userInfo models.UserInfo) (models.Jobs, error) {
 	// Return updated job
 	return job, nil
 }
+
 func GetSavedJobsByCareerID(careerID string) ([]models.SavedJob, error) {
 
 	CareerID, err := primitive.ObjectIDFromHex(careerID)

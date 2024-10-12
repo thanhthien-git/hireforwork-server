@@ -277,3 +277,39 @@ func CareerViewedJob(careerID string, jobID string) (models.CareerViewedJob, err
 	return careerViewed, nil
 
 }
+
+func RemoveSaveJob(careerID string, jobID string) (models.CareerSaveJob, error) {
+
+	careerObjID, err := primitive.ObjectIDFromHex(careerID)
+	if err != nil {
+		return models.CareerSaveJob{}, fmt.Errorf("invalid career ID: %v", err)
+	}
+
+	jobObjID, err := primitive.ObjectIDFromHex(jobID)
+	if err != nil {
+		return models.CareerSaveJob{}, fmt.Errorf("invalid job ID: %v", err)
+	}
+
+	filter := bson.M{
+		"careerID":      careerObjID,
+		"saveJob.jobId": jobObjID,
+	}
+
+	update := bson.M{
+		"$set": bson.M{"saveJob.$.isDeleted": true},
+	}
+
+	opts := options.FindOneAndUpdate().SetReturnDocument(options.After)
+	var updatedCareerSave models.CareerSaveJob
+	result := careerSaveJob.FindOneAndUpdate(context.Background(), filter, update, opts)
+	if result.Err() != nil {
+		return models.CareerSaveJob{}, fmt.Errorf("failed to update document: %v", result.Err())
+	}
+
+	err = result.Decode(&updatedCareerSave)
+	if err != nil {
+		return models.CareerSaveJob{}, fmt.Errorf("failed to decode updated document: %v", err)
+	}
+
+	return updatedCareerSave, nil
+}
