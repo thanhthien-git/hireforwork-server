@@ -91,7 +91,6 @@ func ApplyJob(w http.ResponseWriter, r *http.Request) {
 func GetSavedJobs(w http.ResponseWriter, r *http.Request) {
 
 	vars := mux.Vars(r)
-	// Gọi service để lấy danh sách công việc đã lưu
 	savedJobs, err := service.GetSavedJobsByCareerID(vars["careerID"])
 	if err != nil {
 		if err == mongo.ErrNoDocuments {
