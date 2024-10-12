@@ -106,10 +106,9 @@ func GetSavedJobs(w http.ResponseWriter, r *http.Request) {
 }
 
 func GetJobApplyHistoryByCareerID(w http.ResponseWriter, r *http.Request) {
-	// Lấy careerID từ URL
+
 	vars := mux.Vars(r)
 
-	// Gọi service để lấy danh sách công việc mà người dùng đã apply
 	jobApplyHistory, err := service.GetJobApplyHistoryByCareerID(vars["careerID"])
 	if err != nil {
 		if err == mongo.ErrNoDocuments {
@@ -119,8 +118,6 @@ func GetJobApplyHistoryByCareerID(w http.ResponseWriter, r *http.Request) {
 		}
 		return
 	}
-
-	// Trả về danh sách dưới dạng JSON
 	w.Header().Set("Content-Type", "application/json")
 	if err := json.NewEncoder(w).Encode(jobApplyHistory); err != nil {
 		http.Error(w, "Error encoding JSON response", http.StatusInternalServerError)
