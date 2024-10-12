@@ -100,40 +100,52 @@ func ApplyForJob(jobID string, userInfo models.UserInfo) (models.Jobs, error) {
 	// Return updated job
 	return job, nil
 }
+func GetSavedJobsByCareerID(careerID string) ([]models.SavedJob, error) {
 
-func GetSavedJobsByCareerID(careerID string) ([]struct {
-	JobID     string `json:"jobID"`
-	IsDeleted bool   `json:"isDeleted"`
-}, error) {
 	CareerID, err := primitive.ObjectIDFromHex(careerID)
+	pipeline := mongo.Pipeline{
+		{
+			{"$match", bson.D{
+				{"careerID", CareerID},
+			}},
+		},
+		{
+			{"$project", bson.D{
+				{"saveJob", bson.D{
+					{"$filter", bson.D{
+						{"input", "$saveJob"},
+						{"as", "job"},
+						{"cond", bson.D{
+							{"$eq", bson.A{"$$job.isDeleted", false}},
+						}},
+					}},
+				}},
+			}},
+		},
+	}
+
+	result, err := CareerSaveJobCollection.Aggregate(context.Background(), pipeline)
 	if err != nil {
-		log.Printf("Invalid career ID: %v", err)
+		log.Printf("Error during aggregation: %v", err)
+	}
+	defer result.Close(context.Background())
+
+	var results []models.CareerSaveJob
+	if err := result.All(context.Background(), &results); err != nil {
+		log.Printf("Error decoding results: %v", err)
 		return nil, err
 	}
-
-	var careerSave models.CareerSaveJob
-	err = CareerSaveJobCollection.FindOne(context.Background(), bson.M{"careerID": CareerID}).Decode(&careerSave)
-	if err != nil {
-		log.Printf("Error finding CareerSaveJob: %v", err)
-		return nil, err
-	}
-
-	var savedJobsResponse []struct {
-		JobID     string `json:"jobID"`
-		IsDeleted bool   `json:"isDeleted"`
-	}
-
-	for _, job := range careerSave.SaveJob {
-		if !job.IsDeleted {
-			savedJobsResponse = append(savedJobsResponse, struct {
-				JobID     string `json:"jobID"`
-				IsDeleted bool   `json:"isDeleted"`
-			}{
-				JobID:     job.JobID.Hex(),
-				IsDeleted: job.IsDeleted,
-			})
-		}
-	}
-
-	return savedJobsResponse, nil
+	return results[0].SaveJob, nil
 }
+
+// func GetJobApplyHistoryByCareerID(careerID string) (models.CareerApplyJob, error) {
+// 	CareerID, err := primitive.ObjectIDFromHex(careerID)
+// 	var applyJobs models.CareerApplyJob
+// 	filter := bson.M{"careerID": CareerID, "isDeleted": false}
+// 	err = CareerApplyJobCollection.FindOne(context.Background(), filter).Decode(&applyJobs)
+// 	if err != nil {
+// 		log.Printf("Error for job history: %v", err)
+// 		return models.CareerApplyJob{}, err
+// 	}
+// 	return applyJobs, nil
+// }
