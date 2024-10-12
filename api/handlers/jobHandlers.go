@@ -7,7 +7,6 @@ import (
 	"log"
 	"net/http"
 	"strconv"
-
 	"time"
 
 	"github.com/gorilla/mux"
@@ -88,6 +87,7 @@ func ApplyJob(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Error encoding response JSON", http.StatusInternalServerError)
 	}
 }
+
 func GetSavedJobs(w http.ResponseWriter, r *http.Request) {
 
 	vars := mux.Vars(r)
@@ -121,5 +121,24 @@ func GetJobApplyHistoryByCareerID(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	if err := json.NewEncoder(w).Encode(jobApplyHistory); err != nil {
 		http.Error(w, "Error encoding JSON response", http.StatusInternalServerError)
+	}
+}
+
+type JobHandler struct {
+	JobService *service.JobService
+}
+
+func (h *JobHandler) GetSuggestJobs(w http.ResponseWriter, r *http.Request) {
+	jobs, err := h.JobService.GetLatestJobs()
+	if err != nil {
+		http.Error(w, "Error fetching jobs", http.StatusInternalServerError)
+		log.Printf("Error fetching jobs: %v", err) // Ghi lại lỗi chi tiết
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	if err := json.NewEncoder(w).Encode(jobs); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
 }
