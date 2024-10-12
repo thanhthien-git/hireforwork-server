@@ -113,7 +113,7 @@ func (h *Handler) LoginCompany(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Invaild request", http.StatusBadRequest)
 	}
 	if credential.Role == "company" {
-		token, err := h.AuthService.LoginForCompany(credential)
+		response, err := h.AuthService.LoginForCompany(credential)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusUnauthorized)
 			return
@@ -122,7 +122,7 @@ func (h *Handler) LoginCompany(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
 
-		json.NewEncoder(w).Encode(map[string]string{"token": token})
+		json.NewEncoder(w).Encode(response)
 	}
 }
 

@@ -163,8 +163,8 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		http.Error(w, "Invaild request", http.StatusBadRequest)
 	}
-	if credential.Role == "career" {
-		token, err := h.AuthService.LoginForCareer(credential)
+	if credential.Role == "CAREER" {
+		response, err := h.AuthService.LoginForCareer(credential)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusUnauthorized)
 			return
@@ -173,7 +173,7 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
 
-		json.NewEncoder(w).Encode(map[string]string{"token": token})
+		json.NewEncoder(w).Encode(response)
 	}
 } // UpdateUser là handler để cập nhật user theo ID
 func UpdateUser(w http.ResponseWriter, r *http.Request) {
