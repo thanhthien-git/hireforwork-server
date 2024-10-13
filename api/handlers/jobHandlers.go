@@ -21,7 +21,12 @@ func GetJob(w http.ResponseWriter, r *http.Request) {
 	pageSizeStr := r.URL.Query().Get("pageSize")
 	pageSize, _ := strconv.Atoi(pageSizeStr)
 
-	jobs, err := service.GetJob(page, pageSize)
+	jobTitle := r.URL.Query().Get("jobTitle")
+	workingLocation := r.URL.Query().Get("workingLocation")
+	jobCategory := r.URL.Query().Get("jobCategory")
+	companyName := r.URL.Query().Get("companyName")
+
+	jobs, err := service.GetJob(page, pageSize, jobTitle, workingLocation, jobCategory, companyName)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return

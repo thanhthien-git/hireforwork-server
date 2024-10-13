@@ -19,6 +19,7 @@ import (
 var JobCollection *mongo.Collection
 var CareerApplyJobCollection *mongo.Collection
 var CareerSaveJobCollection *mongo.Collection
+var CompanyCollection *mongo.Collection
 
 func init() {
 	client, ctx, err := dbHelper.ConnectDB()
@@ -31,19 +32,49 @@ func init() {
 	CareerSaveJobCollection = dbHelper.GetCollection(ctx, os.Getenv("COLLECTION_CAREERSAVEJOB"), client)
 
 }
-func GetJob(page, pageSize int) (models.PaginateDocs[models.Jobs], error) {
+func GetJob(page, pageSize int, jobTitle string, workingLocation string, jobCategory string, companyName string) (models.PaginateDocs[models.Jobs], error) {
 	var jobs []models.Jobs
-
 	skip := (page - 1) * pageSize
 
 	findOption := options.Find()
 	findOption.SetLimit(int64(pageSize))
 	findOption.SetSkip(int64(skip))
-	///100 documents -> 5
 
-	totalDocs, _ := jobCollection.CountDocuments(context.Background(), bson.D{})
+	filter := bson.M{
+		"isDeleted": false,
+	}
+	if jobTitle != "" {
+		filter["jobTitle"] = bson.M{
+			"$regex": primitive.Regex{Pattern: jobTitle, Options: "i"},
+		}
+	}
+	if workingLocation != "" {
+		filter["workingLocation"] = bson.M{
+			"$elemMatch": bson.M{
+				"$regex": primitive.Regex{Pattern: workingLocation, Options: "i"},
+			},
+		}
+	}
+
+	if jobCategory != "" {
+		filter["jobCategory"] = bson.M{
+			"$elemMatch": bson.M{
+				"$regex": primitive.Regex{Pattern: jobCategory, Options: "i"},
+			},
+		}
+	}
+	if companyName != "" {
+		companyID, err := GetCompanyIDByName(companyName)
+		if err != nil {
+			return models.PaginateDocs[models.Jobs]{}, err
+		}
+
+		filter["companyID"] = companyID
+	}
+
+	totalDocs, _ := JobCollection.CountDocuments(context.Background(), filter)
 	totalPage := int64(math.Ceil(float64(totalDocs) / float64(pageSize)))
-	cursor, err := jobCollection.Find(context.Background(), bson.D{{"isDeleted", false}}, findOption)
+	cursor, err := JobCollection.Find(context.Background(), filter, findOption)
 	if err != nil {
 		log.Printf("Error finding documents: %v", err)
 		return models.PaginateDocs[models.Jobs]{}, err
@@ -63,6 +94,31 @@ func GetJob(page, pageSize int) (models.PaginateDocs[models.Jobs], error) {
 	}
 
 	return result, nil
+}
+func GetCompanyIDByName(companyName string) (primitive.ObjectID, error) {
+	if companyCollection == nil {
+		return primitive.NilObjectID, errors.New("CompanyCollection is not initialized")
+	}
+
+	var company struct {
+		ID primitive.ObjectID `bson:"_id"`
+	}
+
+	filter := bson.M{
+		"companyName": bson.M{
+			"$regex": primitive.Regex{Pattern: companyName, Options: "i"},
+		},
+	}
+
+	err := companyCollection.FindOne(context.Background(), filter).Decode(&company)
+	if err != nil {
+		if err == mongo.ErrNoDocuments {
+			return primitive.NilObjectID, errors.New("company not found")
+		}
+		return primitive.NilObjectID, err
+	}
+
+	return company.ID, nil
 }
 
 func ApplyForJob(jobID string, userInfo models.UserInfo) (models.Jobs, error) {
