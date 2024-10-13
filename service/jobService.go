@@ -130,3 +130,17 @@ func (s *JobService) GetLatestJobs() ([]models.Jobs, error) {
 
 	return jobs, nil
 }
+
+func GetJobByID(jobID string) (models.Jobs, error) {
+	_id, err := primitive.ObjectIDFromHex(jobID)
+	if err != nil {
+		return models.Jobs{}, err
+	}
+
+	var job models.Jobs
+	err = JobCollection.FindOne(context.Background(), bson.D{{"_id", _id}}).Decode(&job)
+	if err != nil {
+		return models.Jobs{}, err
+	}
+	return job, nil
+}

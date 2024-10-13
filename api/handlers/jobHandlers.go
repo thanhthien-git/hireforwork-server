@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"encoding/json"
+	"hireforwork-server/interfaces"
 	"hireforwork-server/models"
 	"hireforwork-server/service"
 	"log"
@@ -103,5 +104,27 @@ func (h *JobHandler) GetSuggestJobs(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 	if err := json.NewEncoder(w).Encode(jobs); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
+}
+
+func GetJobByID(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+
+	job, err := service.GetJobByID(vars["id"])
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusNotFound)
+		return
+	}
+
+	response := interfaces.IResponse[models.Jobs]{
+		Doc: job,
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+
+	if err := json.NewEncoder(w).Encode(response); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
 	}
 }
