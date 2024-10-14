@@ -18,6 +18,7 @@ import (
 
 var JobCollection *mongo.Collection
 var CareerApplyJobCollection *mongo.Collection
+var CareerSaveJobCollection *mongo.Collection
 
 func init() {
 	client, ctx, err := dbHelper.ConnectDB()
@@ -27,6 +28,7 @@ func init() {
 
 	JobCollection = dbHelper.GetCollection(ctx, os.Getenv("COLLECTION_JOB"), client)
 	CareerApplyJobCollection = dbHelper.GetCollection(ctx, os.Getenv("COLLECTION_CAREERAPPLYJOB"), client)
+	CareerSaveJobCollection = dbHelper.GetCollection(ctx, os.Getenv("COLLECTION_CAREERSAVEJOB"), client)
 
 }
 func GetJob(page, pageSize int) (models.PaginateDocs[models.Jobs], error) {
@@ -97,6 +99,55 @@ func ApplyForJob(jobID string, userInfo models.UserInfo) (models.Jobs, error) {
 
 	// Return updated job
 	return job, nil
+}
+
+func GetSavedJobsByCareerID(careerID string) ([]models.SavedJob, error) {
+
+	CareerID, err := primitive.ObjectIDFromHex(careerID)
+	pipeline := mongo.Pipeline{
+		{
+			{"$match", bson.D{
+				{"careerID", CareerID},
+			}},
+		},
+		{
+			{"$project", bson.D{
+				{"saveJob", bson.D{
+					{"$filter", bson.D{
+						{"input", "$saveJob"},
+						{"as", "job"},
+						{"cond", bson.D{
+							{"$eq", bson.A{"$$job.isDeleted", false}},
+						}},
+					}},
+				}},
+			}},
+		},
+	}
+
+	result, err := CareerSaveJobCollection.Aggregate(context.Background(), pipeline)
+	if err != nil {
+		log.Printf("Error during aggregation : %v", err)
+	}
+	defer result.Close(context.Background())
+
+	var results []models.CareerSaveJob
+	if err := result.All(context.Background(), &results); err != nil {
+		log.Printf("Error decoding results: %v", err)
+		return nil, err
+	}
+	return results[0].SaveJob, nil
+}
+func GetJobApplyHistoryByCareerID(careerID string) (models.CareerApplyJob, error) {
+	CareerID, err := primitive.ObjectIDFromHex(careerID)
+	var applyJobs models.CareerApplyJob
+	filter := bson.M{"careerID": CareerID, "isDeleted": false}
+	err = CareerApplyJobCollection.FindOne(context.Background(), filter).Decode(&applyJobs)
+	if err != nil {
+		log.Printf("Error for job history: %v", err)
+		return models.CareerApplyJob{}, err
+	}
+	return applyJobs, nil
 }
 
 type JobService struct {

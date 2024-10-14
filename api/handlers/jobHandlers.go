@@ -11,6 +11,7 @@ import (
 
 	"github.com/gorilla/mux"
 	"go.mongodb.org/mongo-driver/bson/primitive"
+	"go.mongodb.org/mongo-driver/mongo"
 )
 
 func GetJob(w http.ResponseWriter, r *http.Request) {
@@ -84,6 +85,42 @@ func ApplyJob(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 	if err := json.NewEncoder(w).Encode(updatedJob); err != nil {
 		http.Error(w, "Error encoding response JSON", http.StatusInternalServerError)
+	}
+}
+
+func GetSavedJobs(w http.ResponseWriter, r *http.Request) {
+
+	vars := mux.Vars(r)
+	// Gọi service để lấy danh sách công việc đã lưu
+	savedJobs, err := service.GetSavedJobsByCareerID(vars["careerID"])
+	if err != nil {
+		if err == mongo.ErrNoDocuments {
+			http.Error(w, "No saved jobs found for this user", http.StatusNotFound)
+		} else {
+			http.Error(w, "Error retrieving saved jobs", http.StatusInternalServerError)
+		}
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(savedJobs)
+}
+
+func GetJobApplyHistoryByCareerID(w http.ResponseWriter, r *http.Request) {
+
+	vars := mux.Vars(r)
+
+	jobApplyHistory, err := service.GetJobApplyHistoryByCareerID(vars["careerID"])
+	if err != nil {
+		if err == mongo.ErrNoDocuments {
+			http.Error(w, "No job apply history found for this user", http.StatusNotFound)
+		} else {
+			http.Error(w, "Error retrieving job apply history", http.StatusInternalServerError)
+		}
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(jobApplyHistory); err != nil {
+		http.Error(w, "Error encoding JSON response", http.StatusInternalServerError)
 	}
 }
 
