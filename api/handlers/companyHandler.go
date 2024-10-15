@@ -109,10 +109,12 @@ func (h *Handler) LoginCompany(w http.ResponseWriter, r *http.Request) {
 	var credential service.Credentials
 
 	err := json.NewDecoder(r.Body).Decode(&credential)
+
 	if err != nil {
 		http.Error(w, "Invaild request", http.StatusBadRequest)
 	}
-	if credential.Role == "company" {
+
+	if credential.Role == "COMPANY" {
 		response, err := h.AuthService.LoginForCompany(credential)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusUnauthorized)
