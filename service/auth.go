@@ -52,12 +52,14 @@ func init() {
 }
 
 // Generate token
-func (a AuthService) GenerateToken(username string, role string) (string, error) {
+func (a AuthService) GenerateToken(username string, id primitive.ObjectID, role string) (string, error) {
 	expirationTime := time.Now().Add(100 * time.Minute)
 	claims := &Claims{
 		Username: username,
 		Role:     role,
 		StandardClaims: jwt.StandardClaims{
+			Subject:   id.Hex(),
+			IssuedAt:  time.Now().Unix(),
 			ExpiresAt: expirationTime.Unix(),
 		},
 	}
@@ -107,7 +109,7 @@ func (a *AuthService) LoginForCareer(credential Credentials) (LoginResponse, err
 	if !a.CheckPasswordHash(career.Password, credential.Password) {
 		return LoginResponse{}, errors.New("Invalid username or password")
 	}
-	token, _ := a.GenerateToken(career.CareerEmail, career.Role)
+	token, _ := a.GenerateToken(career.CareerEmail, career.Id, career.Role)
 
 	response := LoginResponse{
 		Token: token,
@@ -132,12 +134,12 @@ func (a *AuthService) LoginForCompany(credential Credentials) (LoginResponse, er
 	if !a.CheckPasswordHash(company.Password, credential.Password) {
 		return LoginResponse{}, errors.New("Wrong password")
 	}
-	token, _ := a.GenerateToken(company.Contact.CompanyEmail, "company")
+	token, _ := a.GenerateToken(company.Contact.CompanyEmail, company.Id, "COMPANY")
 
 	response := LoginResponse{
 		Token: token,
 		Id:    company.Id,
-		Role:  "company",
+		Role:  "COMPANY",
 	}
 	return response, nil
 }
