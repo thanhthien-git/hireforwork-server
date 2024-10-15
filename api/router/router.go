@@ -43,7 +43,8 @@ func SetUpRouter() *mux.Router {
 	router.HandleFunc("/careers/savejob", handlers.SaveJob).Methods("POST")
 	router.HandleFunc("/careers/viewedjob", handlers.CareerViewedJob).Methods("POST")
 	router.HandleFunc("/jobs", handlers.GetJob).Methods("GET")
-	router.HandleFunc("/jobs/{id}/apply", handlers.ApplyJob).Methods("POST")
+	router.HandleFunc("/jobs/{id}", handlers.GetJobByID).Methods("GET")
+	router.HandleFunc("/jobs/apply", handlers.ApplyJob).Methods("POST")
 
 	//Company Router
 	router.HandleFunc("/companies/auth/login", handler.LoginCompany).Methods("POST")

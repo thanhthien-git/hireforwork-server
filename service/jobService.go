@@ -2,7 +2,6 @@ package service
 
 import (
 	"context"
-	"errors"
 	dbHelper "hireforwork-server/db"
 	"hireforwork-server/models"
 	"log"
@@ -63,41 +62,38 @@ func GetJob(page, pageSize int) (models.PaginateDocs[models.Jobs], error) {
 	return result, nil
 }
 
-func ApplyForJob(jobID string, userInfo models.UserInfo) (models.Jobs, error) {
-	objectID, err := primitive.ObjectIDFromHex(jobID)
-	if err != nil {
-		log.Printf("Invalid job ID: %v", err)
-		return models.Jobs{}, errors.New("invalid job ID")
-	}
+func ApplyForJob(jobID primitive.ObjectID, userInfo models.UserInfo) (models.Jobs, error) {
+    // Inserting into CareerApplyJobCollection first
+    newApply := models.CareerApplyJob{
+        ID:        primitive.NewObjectID(),
+        CareerID:  userInfo.UserId,
+        JobID:     jobID,
+        CreateAt:  primitive.NewDateTimeFromTime(time.Now()),
+        IsDeleted: false,
+        Status:    "applied",
+    }
 
-	var job models.Jobs
-	filter := bson.M{"_id": objectID, "isDeleted": false}
-	update := bson.M{"$push": bson.M{"userApply": userInfo}}
+    _, err := CareerApplyJobCollection.InsertOne(context.Background(), newApply)
+    if err != nil {
+        log.Printf("Error inserting apply data into CareerApplyJob: %v", err)
+        return models.Jobs{}, err
+    }
 
-	err = JobCollection.FindOneAndUpdate(context.Background(), filter, update).Decode(&job)
-	if err != nil {
-		log.Printf("Error updating job with user info: %v", err)
-		return models.Jobs{}, err
-	}
+    // Updating the Job collection
+    filter := bson.M{"_id": jobID, "isDeleted": false}
+    update := bson.M{"$push": bson.M{"userApply": userInfo}}
 
-	newApply := models.CareerApplyJob{
-		ID:        primitive.NewObjectID(),
-		CareerID:  userInfo.UserId,
-		JobID:     objectID,
-		CreateAt:  primitive.NewDateTimeFromTime(time.Now()),
-		IsDeleted: false,
-		Status:    "applied",
-	}
+    var job models.Jobs
+    err = JobCollection.FindOneAndUpdate(context.Background(), filter, update).Decode(&job)
+    if err != nil {
+        log.Printf("Error updating job with user info: %v", err)
+        return models.Jobs{}, err
+    }
 
-	_, err = CareerApplyJobCollection.InsertOne(context.Background(), newApply)
-	if err != nil {
-		log.Printf("Error inserting apply data into CareerApplyJob: %v", err)
-		return models.Jobs{}, err
-	}
-
-	// Return updated job
-	return job, nil
+    return job, nil
 }
+
+
 
 type JobService struct {
 	Collection *mongo.Collection
@@ -129,4 +125,18 @@ func (s *JobService) GetLatestJobs() ([]models.Jobs, error) {
 	}
 
 	return jobs, nil
+}
+
+func GetJobByID(jobID string) (models.Jobs, error) {
+	_id, err := primitive.ObjectIDFromHex(jobID)
+	if err != nil {
+		return models.Jobs{}, err
+	}
+
+	var job models.Jobs
+	err = JobCollection.FindOne(context.Background(), bson.D{{"_id", _id}}).Decode(&job)
+	if err != nil {
+		return models.Jobs{}, err
+	}
+	return job, nil
 }
