@@ -4,3 +4,5 @@
 /tmp
 .vercel
 /hireforwork-server.exe
+/tmp/build-errors.log        
+/tmp/main.exe   
