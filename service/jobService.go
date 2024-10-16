@@ -30,7 +30,6 @@ func init() {
 	JobCollection = dbHelper.GetCollection(ctx, os.Getenv("COLLECTION_JOB"), client)
 	CareerApplyJobCollection = dbHelper.GetCollection(ctx, os.Getenv("COLLECTION_CAREERAPPLYJOB"), client)
 	CareerSaveJobCollection = dbHelper.GetCollection(ctx, os.Getenv("COLLECTION_CAREERSAVEJOB"), client)
-
 }
 func GetJob(page, pageSize int, jobTitle string, workingLocation string, jobCategory string, companyName string) (models.PaginateDocs[models.Jobs], error) {
 	var jobs []models.Jobs
@@ -96,10 +95,6 @@ func GetJob(page, pageSize int, jobTitle string, workingLocation string, jobCate
 	return result, nil
 }
 func GetCompanyIDByName(companyName string) (primitive.ObjectID, error) {
-	if companyCollection == nil {
-		return primitive.NilObjectID, errors.New("CompanyCollection is not initialized")
-	}
-
 	var company struct {
 		ID primitive.ObjectID `bson:"_id"`
 	}

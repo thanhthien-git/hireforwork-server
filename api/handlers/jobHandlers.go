@@ -94,10 +94,8 @@ func ApplyJob(w http.ResponseWriter, r *http.Request) {
 }
 
 func GetSavedJobs(w http.ResponseWriter, r *http.Request) {
-
 	vars := mux.Vars(r)
-	// Gọi service để lấy danh sách công việc đã lưu
-	savedJobs, err := service.GetSavedJobsByCareerID(vars["careerID"])
+	savedJobs, err := service.GetSavedJobsByCareerID(vars["id"])
 	if err != nil {
 		if err == mongo.ErrNoDocuments {
 			http.Error(w, "No saved jobs found for this user", http.StatusNotFound)
@@ -114,7 +112,7 @@ func GetJobApplyHistoryByCareerID(w http.ResponseWriter, r *http.Request) {
 
 	vars := mux.Vars(r)
 
-	jobApplyHistory, err := service.GetJobApplyHistoryByCareerID(vars["careerID"])
+	jobApplyHistory, err := service.GetJobApplyHistoryByCareerID(vars["id"])
 	if err != nil {
 		if err == mongo.ErrNoDocuments {
 			http.Error(w, "No job apply history found for this user", http.StatusNotFound)

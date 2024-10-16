@@ -14,3 +14,8 @@ type CareerSaveJob struct {
 	CareerID primitive.ObjectID `bson:"careerID" json:"careerID"`
 	SaveJob  []SavedJob         `bson:"saveJob" json:"saveJob"`
 }
+type SaveJobRequest struct {
+	CareerID  primitive.ObjectID `bson:"careerID" json:"careerID"` // Thêm CareerID vào request body
+	JobID     primitive.ObjectID `bson:"jobID" json:"jobID"`
+	IsDeleted bool               `bson:"isDeleted" json:"isDeleted"`
+}

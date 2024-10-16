@@ -196,44 +196,26 @@ func UpdateUserByID(userID string, updatedUser models.User) (models.User, error)
 	// Return the updated user
 	return updatedUser, nil
 }
-func SaveJob(careerID string, jobID string) (models.CareerSaveJob, error) {
-	careerObjID, err := primitive.ObjectIDFromHex(careerID)
-	if err != nil {
-		return models.CareerSaveJob{}, err
-	}
+func SaveJob(careerID primitive.ObjectID, jobID primitive.ObjectID) (*mongo.UpdateResult, error) {
 
-	jobObjID, err := primitive.ObjectIDFromHex(jobID)
-	if err != nil {
-		return models.CareerSaveJob{}, err
-	}
-
-	// Tạo đối tượng job đã lưu
-	savedJob := models.SavedJob{
-		JobID:     jobObjID,
-		IsDeleted: false,
-	}
-
-	// Cập nhật hoặc tạo mới nếu không tồn tại
-	filter := bson.M{"careerID": careerObjID}
+	filter := bson.M{"careerID": careerID}
 	update := bson.M{
-		"$addToSet": bson.M{"saveJob": savedJob},
+		"$addToSet": bson.M{
+			"saveJob": bson.M{
+				"jobID":     jobID,
+				"isDeleted": false,
+			},
+		},
 	}
 
-	// Cập nhật hoặc tạo mới document trong collection CareerSaveJob
 	opts := options.Update().SetUpsert(true)
-	_, err = careerSaveJob.UpdateOne(context.Background(), filter, update, opts)
+
+	result, err := CareerSaveJobCollection.UpdateOne(context.Background(), filter, update, opts)
 	if err != nil {
-		return models.CareerSaveJob{}, err
+		return nil, fmt.Errorf("Không thêm công việc vào danh sách được : %v", err)
 	}
 
-	// Lấy lại document vừa được cập nhật
-	var careerSave models.CareerSaveJob
-	err = careerSaveJob.FindOne(context.Background(), filter).Decode(&careerSave)
-	if err != nil {
-		return models.CareerSaveJob{}, err
-	}
-
-	return careerSave, nil
+	return result, nil
 }
 
 func CareerViewedJob(careerID string, jobID string) (models.CareerViewedJob, error) {
