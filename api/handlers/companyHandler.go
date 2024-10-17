@@ -176,3 +176,18 @@ func DeleteJobByID(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte(`{"message": "Job deleted successfully"}`))
 }
+
+func GetCareerApply(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	res, err := service.GetCareersApplyJob(vars["id"])
+	if err != nil {
+		http.Error(w, "Lỗi xảy ra", http.StatusBadRequest)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	if json.NewEncoder(w).Encode(res); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+}

@@ -8,10 +8,8 @@ import (
 	"log"
 	"net/http"
 	"strconv"
-	"time"
 
 	"github.com/gorilla/mux"
-	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 func GetJob(w http.ResponseWriter, r *http.Request) {
@@ -37,62 +35,22 @@ func GetJob(w http.ResponseWriter, r *http.Request) {
 
 func ApplyJob(w http.ResponseWriter, r *http.Request) {
 
-    var input struct {
-        JobID      string `json:"jobID"`
-        IDCareer   string `json:"idCareer"`
-        IsAccepted string `json:"isAccepted"`
-        CreateAt   string `json:"createAt"`
-    }
+	request := interfaces.IJobApply{}
 
-    if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
-        http.Error(w, "Invalid input", http.StatusBadRequest)
-        log.Printf("Error decoding JSON: %v", err)
-        return
-    }
+	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
+		http.Error(w, "Invalid input", http.StatusBadRequest)
+		log.Printf("Error decoding JSON: %v", err)
+		return
+	}
 
-    log.Printf("Received ApplyJob input: %+v", input)
+	updatedJob, _ := service.ApplyForJob(request)
 
-    jobID, err := primitive.ObjectIDFromHex(input.JobID)
-    if err != nil {
-        http.Error(w, "Invalid job ID", http.StatusBadRequest)
-        log.Printf("Invalid job ID: %v", err)
-        return
-    }
-
-    userID, err := primitive.ObjectIDFromHex(input.IDCareer)
-    if err != nil {
-        http.Error(w, "Invalid career ID", http.StatusBadRequest)
-        log.Printf("Invalid career ID: %v", err)
-        return
-    }
-
-    createAt, err := time.Parse(time.RFC3339, input.CreateAt)
-    if err != nil {
-        http.Error(w, "Invalid date format", http.StatusBadRequest)
-        log.Printf("Invalid date format: %v", err)
-        return
-    }
-
-    userInfo := models.UserInfo{
-        UserId:     userID,
-        IsAccepted: input.IsAccepted,
-        CreateAt:   primitive.NewDateTimeFromTime(createAt),
-    }
-
-    updatedJob, err := service.ApplyForJob(jobID, userInfo)
-    if err != nil {
-        http.Error(w, err.Error(), http.StatusInternalServerError)
-        log.Printf("Error applying for job: %v", err)
-        return
-    }
-
-    w.Header().Set("Content-Type", "application/json")
-    w.WriteHeader(http.StatusOK)
-    if err := json.NewEncoder(w).Encode(updatedJob); err != nil {
-        http.Error(w, "Error encoding response JSON", http.StatusInternalServerError)
-    }
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	if err := json.NewEncoder(w).Encode(updatedJob); err != nil {
+		http.Error(w, "Error encoding response JSON", http.StatusInternalServerError)
+	}
 }
-
 
 type JobHandler struct {
 	JobService *service.JobService

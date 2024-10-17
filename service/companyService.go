@@ -198,7 +198,6 @@ func GetJobsByCompanyID(companyID string) ([]models.Jobs, error) {
 }
 
 func DeleteJobByID(companyID string, jobID string) error {
-	// Chuyển đổi jobID và companyID sang ObjectID
 	jobObjectID, err := primitive.ObjectIDFromHex(jobID)
 	if err != nil {
 		log.Printf("Invalid job ID: %v", err)
@@ -211,7 +210,6 @@ func DeleteJobByID(companyID string, jobID string) error {
 		return errors.New("invalid company ID")
 	}
 
-	// Kiểm tra xem công việc có tồn tại và thuộc về công ty hay không
 	filter := bson.M{"_id": jobObjectID, "companyID": companyObjectID, "isDeleted": false}
 	update := bson.M{
 		"$set": bson.M{
@@ -229,4 +227,47 @@ func DeleteJobByID(companyID string, jobID string) error {
 	}
 
 	return nil
+}
+
+func GetCareersApplyJob(companyID string) ([]bson.M, error) {
+	id, _ := primitive.ObjectIDFromHex(companyID)
+
+	pipeline := mongo.Pipeline{
+		{{"$match", bson.D{
+			{"companyID", id},
+			{"isDeleted", false},
+		}}},
+		{{"$lookup", bson.D{
+			{"from", "Job"},
+			{"localField", "jobID"},
+			{"foreignField", "_id"},
+			{"as", "jobDetail"},
+		}}},
+		{{"$lookup", bson.D{
+			{"from", "Career"},
+			{"localField", "careerID"},
+			{"foreignField", "_id"},
+			{"as", "careerDetail"},
+		}}},
+		{{"$project", bson.D{
+			{"_id", 1},
+			{"jobID", 1},
+			{"careerID", 1},
+			{"careerEmail", bson.D{{"$arrayElemAt", bson.A{"$careerDetail.careerEmail", 0}}}},
+			{"status", 1},
+			{"createAt", 1},
+			{"jobRequireMent", "$jobDetail.jobRequireMent"},
+			{"jobTitle", bson.D{{"$arrayElemAt", bson.A{"$jobDetail.jobTitle", 0}}}},
+		}}},
+	}
+	cursor, err := careerApplyJob.Aggregate(context.TODO(), pipeline)
+	if err != nil {
+		return nil, errors.New("Chúng tôi đã cố gắng hết sức")
+	}
+	defer cursor.Close(context.TODO())
+	var result []bson.M
+	if err := cursor.All(context.TODO(), &result); err != nil {
+		return nil, err
+	}
+	return result, nil
 }

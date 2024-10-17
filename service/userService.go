@@ -22,6 +22,7 @@ var jobCollection *mongo.Collection
 var companyCollection *mongo.Collection
 var careerSaveJob *mongo.Collection
 var careerViewedJob *mongo.Collection
+var careerApplyJob *mongo.Collection
 
 func init() {
 	client, ctx, err := dbHelper.ConnectDB()
@@ -37,6 +38,8 @@ func init() {
 	careerSaveJob = dbHelper.GetCollection(ctx, os.Getenv("COLLECTION_CAREERSAVEJOB"), client)
 
 	careerViewedJob = dbHelper.GetCollection(ctx, os.Getenv("COLLECTION_CAREERVIEWEDJOB"), client)
+
+	careerApplyJob = dbHelper.GetCollection(ctx, os.Getenv("COLLECTION_CAREER_APPLYJOB"), client)
 
 }
 

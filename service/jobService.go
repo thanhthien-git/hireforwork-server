@@ -2,7 +2,9 @@ package service
 
 import (
 	"context"
+	"hireforwork-server/constants"
 	dbHelper "hireforwork-server/db"
+	"hireforwork-server/interfaces"
 	"hireforwork-server/models"
 	"log"
 	"math"
@@ -61,39 +63,52 @@ func GetJob(page, pageSize int) (models.PaginateDocs[models.Jobs], error) {
 
 	return result, nil
 }
-
-func ApplyForJob(jobID primitive.ObjectID, userInfo models.UserInfo) (models.Jobs, error) {
-    // Inserting into CareerApplyJobCollection first
-    newApply := models.CareerApplyJob{
-        ID:        primitive.NewObjectID(),
-        CareerID:  userInfo.UserId,
-        JobID:     jobID,
-        CreateAt:  primitive.NewDateTimeFromTime(time.Now()),
-        IsDeleted: false,
-        Status:    "applied",
-    }
-
-    _, err := CareerApplyJobCollection.InsertOne(context.Background(), newApply)
-    if err != nil {
-        log.Printf("Error inserting apply data into CareerApplyJob: %v", err)
-        return models.Jobs{}, err
-    }
-
-    // Updating the Job collection
-    filter := bson.M{"_id": jobID, "isDeleted": false}
-    update := bson.M{"$push": bson.M{"userApply": userInfo}}
-
-    var job models.Jobs
-    err = JobCollection.FindOneAndUpdate(context.Background(), filter, update).Decode(&job)
-    if err != nil {
-        log.Printf("Error updating job with user info: %v", err)
-        return models.Jobs{}, err
-    }
-
-    return job, nil
+func CheckIsExistedJob(request interfaces.IUserJob, collection *mongo.Collection) bool {
+	filter := bson.D{
+		{"isDeleted", false},
+		{"careerID", request.IDCareer},
+		{"jobID", request.JobID},
+	}
+	var result bson.M
+	err := collection.FindOne(context.Background(), filter).Decode(&result)
+	if err != nil {
+		if err == mongo.ErrNoDocuments {
+			return false
+		}
+		log.Printf("Error occurred while checking job existence: %v", err)
+		return false
+	}
+	return true
 }
 
+func ApplyForJob(request interfaces.IJobApply) (models.Jobs, error) {
+	newApply := models.CareerApplyJob{
+		ID:        primitive.NewObjectID(),
+		CareerID:  request.IDCareer,
+		JobID:     request.JobID,
+		CreateAt:  primitive.NewDateTimeFromTime(time.Now()),
+		IsDeleted: false,
+		Status:    constants.PENDING,
+	}
 
+	_, err := CareerApplyJobCollection.InsertOne(context.Background(), newApply)
+	if err != nil {
+		log.Printf("Error inserting apply data into CareerApplyJob: %v", err)
+		return models.Jobs{}, err
+	}
+
+	filter := bson.M{"_id": request.JobID, "isDeleted": false}
+	update := bson.M{"$push": bson.M{"userApply": request.IDCareer}}
+
+	var job models.Jobs
+	err = JobCollection.FindOneAndUpdate(context.Background(), filter, update).Decode(&job)
+	if err != nil {
+		log.Printf("Error updating job with user info: %v", err)
+		return models.Jobs{}, err
+	}
+
+	return job, nil
+}
 
 type JobService struct {
 	Collection *mongo.Collection
@@ -134,7 +149,10 @@ func GetJobByID(jobID string) (models.Jobs, error) {
 	}
 
 	var job models.Jobs
-	err = JobCollection.FindOne(context.Background(), bson.D{{"_id", _id}}).Decode(&job)
+	projection := bson.D{{"userApply", 0}}
+	findOptions := options.FindOne().SetProjection(projection)
+
+	err = JobCollection.FindOne(context.Background(), bson.D{{"_id", _id}}, findOptions).Decode(&job)
 	if err != nil {
 		return models.Jobs{}, err
 	}
