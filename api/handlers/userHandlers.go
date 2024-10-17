@@ -264,3 +264,24 @@ func RemoveSaveJobHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(updatedCareerSaveJob)
 }
+
+func GetSavedJobs(w http.ResponseWriter, r *http.Request) {
+	careerID := r.URL.Query().Get("careerID")
+	if careerID == "" {
+		http.Error(w, "careerID is required", http.StatusBadRequest)
+		return
+	}
+
+	savedJobs, err := service.GetSavedJob(careerID)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+
+	if err := json.NewEncoder(w).Encode(savedJobs); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
+}

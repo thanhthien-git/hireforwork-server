@@ -316,3 +316,32 @@ func RemoveSaveJob(careerID string, jobID string) (models.CareerSaveJob, error) 
 
 	return updatedCareerSave, nil
 }
+
+func GetSavedJob(careerID string) ([]models.SavedJob, error) {
+	careerObjID, err := primitive.ObjectIDFromHex(careerID)
+	if err != nil {
+		return nil, fmt.Errorf("invalid career ID: %v", err)
+	}
+
+	var careerSave models.CareerSaveJob
+	filter := bson.M{"careerID": careerObjID}
+
+	// Tìm kiếm document trong collection CareerSaveJob
+	err = careerSaveJob.FindOne(context.Background(), filter).Decode(&careerSave)
+	if err != nil {
+		if err == mongo.ErrNoDocuments {
+			return []models.SavedJob{}, nil // Không tìm thấy document nào
+		}
+		return nil, fmt.Errorf("failed to retrieve saved jobs: %v", err)
+	}
+
+	// Lọc jobID mà isDeleted là false
+	var savedJobs []models.SavedJob
+	for _, job := range careerSave.SaveJob {
+		if !job.IsDeleted {
+			savedJobs = append(savedJobs, job)
+		}
+	}
+
+	return savedJobs, nil
+}
