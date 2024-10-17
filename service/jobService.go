@@ -152,42 +152,15 @@ func ApplyForJob(jobID string, userInfo models.UserInfo) (models.Jobs, error) {
 	return job, nil
 }
 
-func GetSavedJobsByCareerID(careerID string) ([]models.SavedJob, error) {
-
+func GetSavedJobsByCareerID(careerID string) (models.CareerSaveJob, error) {
 	CareerID, err := primitive.ObjectIDFromHex(careerID)
-	pipeline := mongo.Pipeline{
-		{
-			{"$match", bson.D{
-				{"careerID", CareerID},
-			}},
-		},
-		{
-			{"$project", bson.D{
-				{"saveJob", bson.D{
-					{"$filter", bson.D{
-						{"input", "$saveJob"},
-						{"as", "job"},
-						{"cond", bson.D{
-							{"$eq", bson.A{"$$job.isDeleted", false}},
-						}},
-					}},
-				}},
-			}},
-		},
-	}
-
-	result, err := CareerSaveJobCollection.Aggregate(context.Background(), pipeline)
+	var savedjob models.CareerSaveJob
+	fitler := bson.M{"careerID": CareerID, "isDeleted": false}
+	err = CareerSaveJobCollection.FindOne(context.Background(), fitler).Decode(&savedjob)
 	if err != nil {
 		log.Printf("Error during aggregation : %v", err)
 	}
-	defer result.Close(context.Background())
-
-	var results []models.CareerSaveJob
-	if err := result.All(context.Background(), &results); err != nil {
-		log.Printf("Error decoding results: %v", err)
-		return nil, err
-	}
-	return results[0].SaveJob, nil
+	return savedjob, nil
 }
 func GetJobApplyHistoryByCareerID(careerID string) (models.CareerApplyJob, error) {
 	CareerID, err := primitive.ObjectIDFromHex(careerID)

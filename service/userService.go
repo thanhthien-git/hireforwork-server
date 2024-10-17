@@ -198,13 +198,13 @@ func UpdateUserByID(userID string, updatedUser models.User) (models.User, error)
 }
 func SaveJob(careerID primitive.ObjectID, jobID primitive.ObjectID) (*mongo.UpdateResult, error) {
 
-	filter := bson.M{"careerID": careerID}
+	filter := bson.M{"careerID": careerID,
+		"jobID": jobID}
+
 	update := bson.M{
-		"$addToSet": bson.M{
-			"saveJob": bson.M{
-				"jobID":     jobID,
-				"isDeleted": false,
-			},
+		"$set": bson.M{
+			"isDeleted": false,
+			"jobID":     jobID,
 		},
 	}
 
