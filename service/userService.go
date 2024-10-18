@@ -336,8 +336,16 @@ func GetSavedJobByCareerID(careerID string) ([]models.SavedJob, error) {
 		return nil, fmt.Errorf("error retrieving saved jobs: %v", err)
 	}
 
-	// Trả về danh sách các công việc đã lưu
-	return careerSave.SaveJob, nil
+	// Lọc ra các công việc đã lưu mà isDeleted là false
+	var activeSavedJobs []models.SavedJob
+	for _, job := range careerSave.SaveJob {
+		if !job.IsDeleted {
+			activeSavedJobs = append(activeSavedJobs, job)
+		}
+	}
+
+	// Trả về danh sách các công việc đã lưu mà không bị xóa
+	return activeSavedJobs, nil
 }
 
 func GetViewedJobByCareerID(careerID string) ([]models.ViewedJob, error) {
