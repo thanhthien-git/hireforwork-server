@@ -266,13 +266,10 @@ func RemoveSaveJobHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func GetSavedJobs(w http.ResponseWriter, r *http.Request) {
-	careerID := r.URL.Query().Get("careerID")
-	if careerID == "" {
-		http.Error(w, "careerID is required", http.StatusBadRequest)
-		return
-	}
+	vars := mux.Vars(r)
+	careerID := vars["careerID"]
 
-	savedJobs, err := service.GetSavedJob(careerID)
+	savedJobs, err := service.GetSavedJobByCareerID(careerID)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -280,8 +277,20 @@ func GetSavedJobs(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(savedJobs)
+}
 
-	if err := json.NewEncoder(w).Encode(savedJobs); err != nil {
+func GetViewedJobs(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	careerID := vars["careerID"]
+
+	viewedJobs, err := service.GetViewedJobByCareerID(careerID)
+	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
 	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(viewedJobs)
 }

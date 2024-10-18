@@ -317,31 +317,48 @@ func RemoveSaveJob(careerID string, jobID string) (models.CareerSaveJob, error) 
 	return updatedCareerSave, nil
 }
 
-func GetSavedJob(careerID string) ([]models.SavedJob, error) {
+func GetSavedJobByCareerID(careerID string) ([]models.SavedJob, error) {
 	careerObjID, err := primitive.ObjectIDFromHex(careerID)
 	if err != nil {
 		return nil, fmt.Errorf("invalid career ID: %v", err)
 	}
 
-	var careerSave models.CareerSaveJob
+	// Tạo filter để tìm kiếm CareerSaveJob theo careerID
 	filter := bson.M{"careerID": careerObjID}
 
 	// Tìm kiếm document trong collection CareerSaveJob
+	var careerSave models.CareerSaveJob
 	err = careerSaveJob.FindOne(context.Background(), filter).Decode(&careerSave)
 	if err != nil {
 		if err == mongo.ErrNoDocuments {
-			return []models.SavedJob{}, nil // Không tìm thấy document nào
+			return nil, fmt.Errorf("no saved jobs found for career ID: %s", careerID)
 		}
-		return nil, fmt.Errorf("failed to retrieve saved jobs: %v", err)
+		return nil, fmt.Errorf("error retrieving saved jobs: %v", err)
 	}
 
-	// Lọc jobID mà isDeleted là false
-	var savedJobs []models.SavedJob
-	for _, job := range careerSave.SaveJob {
-		if !job.IsDeleted {
-			savedJobs = append(savedJobs, job)
-		}
+	// Trả về danh sách các công việc đã lưu
+	return careerSave.SaveJob, nil
+}
+
+func GetViewedJobByCareerID(careerID string) ([]models.ViewedJob, error) {
+	careerObjID, err := primitive.ObjectIDFromHex(careerID)
+	if err != nil {
+		return nil, fmt.Errorf("invalid career ID: %v", err)
 	}
 
-	return savedJobs, nil
+	// Tạo filter để tìm kiếm CareerViewedJob theo careerID
+	filter := bson.M{"careerID": careerObjID}
+
+	// Tìm kiếm document trong collection CareerViewedJob
+	var careerViewed models.CareerViewedJob
+	err = careerViewedJob.FindOne(context.Background(), filter).Decode(&careerViewed)
+	if err != nil {
+		if err == mongo.ErrNoDocuments {
+			return nil, fmt.Errorf("no viewed jobs found for career ID: %s", careerID)
+		}
+		return nil, fmt.Errorf("error retrieving viewed jobs: %v", err)
+	}
+
+	// Trả về danh sách các công việc đã xem
+	return careerViewed.ViewedJob, nil
 }
