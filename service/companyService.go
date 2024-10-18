@@ -7,6 +7,7 @@ import (
 	"log"
 	"math"
 	"net/http"
+	"time"
 
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
@@ -15,7 +16,7 @@ import (
 )
 
 // Lấy danh sách company với phân trang
-func GetCompanies(page int, pageSize int, companyName, companyEmail string) (models.PaginateDocs[models.Company], error) {
+func GetCompanies(page int, pageSize int, companyName, companyEmail string, startDate, endDate *string) (models.PaginateDocs[models.Company], error) {
 
 	var companies []models.Company
 
@@ -36,6 +37,28 @@ func GetCompanies(page int, pageSize int, companyName, companyEmail string) (mod
 
 	if companyEmail != "" {
 		bsonFilter = append(bsonFilter, bson.E{"contact.companyEmail", bson.D{{"$regex", companyEmail}, {"$options", "i"}}})
+	}
+
+	if startDate != nil || endDate != nil {
+		dateFilter := bson.D{}
+
+		if startDate != nil {
+			start, _ := time.Parse("2006-01-02", *startDate)
+			startOfDay := time.Date(start.Year(), start.Month(), start.Day(), 0, 0, 0, 0, start.Location())
+			dateFilter = append(dateFilter, bson.E{"$gte", startOfDay})
+		}
+
+		if endDate != nil {
+			end, _ := time.Parse("2006-01-02", *endDate)
+			endOfDay := time.Date(end.Year(), end.Month(), end.Day(), 23, 59, 59, 999, end.Location())
+			dateFilter = append(dateFilter, bson.E{"$lte", endOfDay})
+		} else {
+			now := time.Now()
+			endOfDay := time.Date(now.Year(), now.Month(), now.Day(), 23, 59, 59, 999, now.Location())
+			dateFilter = append(dateFilter, bson.E{"$lte", endOfDay})
+		}
+
+		bsonFilter = append(bsonFilter, bson.E{"createAt", dateFilter})
 	}
 
 	// Cấu hình phân trang
