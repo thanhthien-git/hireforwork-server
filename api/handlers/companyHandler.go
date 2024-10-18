@@ -22,7 +22,7 @@ func GetCompaniesHandler(w http.ResponseWriter, r *http.Request) {
 	companyName := r.URL.Query().Get("companyName")
 	companyEmail := r.URL.Query().Get("companyEmail")
 
-	companies, err := service.GetCompanies(page, pageSize, companyName, companyEmail)
+	companies, err := service.GetCompanies(page, pageSize, companyName, companyEmail, nil, nil)
 	if err != nil {
 		log.Printf("Error getting companies: %v", err)
 		http.Error(w, "Failed to get companies", http.StatusInternalServerError)
@@ -190,4 +190,28 @@ func GetCareerApply(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+}
+
+func FilterCompaniesByDateHandler(w http.ResponseWriter, r *http.Request) {
+	pageStr := r.URL.Query().Get("page")
+	pageSizeStr := r.URL.Query().Get("pageSize")
+	page, _ := strconv.Atoi(pageStr)
+	pageSize, _ := strconv.Atoi(pageSizeStr)
+
+	companyName := r.URL.Query().Get("companyName")
+	companyEmail := r.URL.Query().Get("companyEmail")
+
+	startDateStr := r.URL.Query().Get("startDate")
+	endDateStr := r.URL.Query().Get("endDate")
+
+	var endDate *string
+
+	if endDateStr != "" {
+		endDate = &endDateStr
+	}
+
+	companies, _ := service.GetCompanies(page, pageSize, companyName, companyEmail, &startDateStr, endDate)
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(companies)
 }
