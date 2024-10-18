@@ -48,6 +48,7 @@ func SetUpRouter() *mux.Router {
 	//Company Router
 	router.HandleFunc("/companies/auth/login", handler.LoginCompany).Methods("POST")
 	router.HandleFunc("/companies", handlers.GetCompaniesHandler).Methods("GET")
+	router.HandleFunc("/companies/filterByDate", handlers.FilterCompaniesByDateHandler).Methods("GET")
 	router.HandleFunc("/companies/{id}", handlers.GetCompanyByID).Methods("GET")
 	router.HandleFunc("/companies/create", handlers.CreateCompany).Methods("POST")
 	router.HandleFunc("/companies/{id}", handlers.DeleteCompanyByID).Methods("DELETE")
@@ -61,5 +62,6 @@ func SetUpRouter() *mux.Router {
 	router.HandleFunc("/careers/{id}", handlers.UpdateUser).Methods("PUT")
 
 	router.HandleFunc("/careers/{careerID}/saved-jobs/{jobID}", handlers.RemoveSaveJobHandler).Methods("DELETE")
+
 	return router
 }
