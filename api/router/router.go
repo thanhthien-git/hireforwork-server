@@ -2,6 +2,7 @@ package api
 
 import (
 	"hireforwork-server/api/handlers"
+	"hireforwork-server/middleware"
 	"hireforwork-server/service"
 	"os"
 
@@ -34,11 +35,11 @@ func SetUpRouter() *mux.Router {
 	router.HandleFunc("/careers/{id}", handlers.DeleteUserByID).Methods("DELETE")
 
 	//AUTH ROUTER
-	// careerRouter := router.PathPrefix("/careers").Subrouter()
-	// careerRouter.Use(middleware.JWTMiddleware(authService))
-	// careerRouter.HandleFunc("", handlers.GetUser).Methods("GET")
-	// careerRouter.HandleFunc("/{id}", handlers.GetUserByID).Methods("GET")
-	// careerRouter.HandleFunc("/{id}", handlers.DeleteUserByID).Methods("DELETE")
+	careerRouter := router.PathPrefix("/careers").Subrouter()
+	careerRouter.Use(middleware.JWTMiddleware(authService))
+	careerRouter.HandleFunc("", handlers.GetUser).Methods("GET")
+	careerRouter.HandleFunc("/{id}", handlers.GetUserByID).Methods("GET")
+	careerRouter.HandleFunc("/{id}", handlers.DeleteUserByID).Methods("DELETE")
 
 	router.HandleFunc("/careers/savejob", handlers.SaveJob).Methods("POST")
 	router.HandleFunc("/careers/viewedjob", handlers.CareerViewedJob).Methods("POST")
@@ -52,14 +53,16 @@ func SetUpRouter() *mux.Router {
 	router.HandleFunc("/companies/create", handlers.CreateCompany).Methods("POST")
 	router.HandleFunc("/companies/{id}", handlers.DeleteCompanyByID).Methods("DELETE")
 	router.HandleFunc("/companies/update/{id}", handlers.UpdateCompanyByID).Methods("PUT")
-	router.HandleFunc("/suggest", jobHandler.GetSuggestJobs).Methods("GET") // Sử dụng JobHandler để gọi GetSuggestJobs
+	router.HandleFunc("/suggest", jobHandler.GetSuggestJobs).Methods("GET")
 	router.HandleFunc("/companies/{companyId}/jobs/{id}", handlers.GetCareersByJobID).Methods("GET")
 	router.HandleFunc("/companies/{id}/jobs", handlers.GetJobsByCompany).Methods("GET")
 	router.HandleFunc("/companies/{companyId}/jobs/{jobId}", handlers.DeleteJobByID).Methods("DELETE")
 
-	//Update User Router
 	router.HandleFunc("/careers/{id}", handlers.UpdateUser).Methods("PUT")
 
 	router.HandleFunc("/careers/{careerID}/saved-jobs/{jobID}", handlers.RemoveSaveJobHandler).Methods("DELETE")
+	//job router
+	router.HandleFunc("/jobs/filter", jobHandler.GetFilteredJobs).Methods("GET")
+
 	return router
 }
