@@ -293,26 +293,22 @@ func RemoveSaveJob(careerID string, jobID string) (models.CareerSaveJob, error) 
 		return models.CareerSaveJob{}, fmt.Errorf("invalid job ID: %v", err)
 	}
 
-	// Filter to match the correct career and saved job
 	filter := bson.M{
 		"careerID":      careerObjID,
 		"saveJob.jobID": jobObjID,
 	}
 
-	// Update to mark the job as deleted
 	update := bson.M{
 		"$set": bson.M{"saveJob.$.isDeleted": true},
 	}
 
 	opts := options.FindOneAndUpdate().SetReturnDocument(options.After)
-
 	var updatedCareerSave models.CareerSaveJob
 	result := careerSaveJob.FindOneAndUpdate(context.Background(), filter, update, opts)
 	if result.Err() != nil {
 		return models.CareerSaveJob{}, fmt.Errorf("failed to update document: %v", result.Err())
 	}
 
-	// Decode the updated document
 	err = result.Decode(&updatedCareerSave)
 	if err != nil {
 		return models.CareerSaveJob{}, fmt.Errorf("failed to decode updated document: %v", err)
@@ -320,7 +316,6 @@ func RemoveSaveJob(careerID string, jobID string) (models.CareerSaveJob, error) 
 
 	return updatedCareerSave, nil
 }
-
 
 func GetSavedJobByCareerID(careerID string) ([]models.SavedJob, error) {
 	careerObjID, err := primitive.ObjectIDFromHex(careerID)
@@ -341,16 +336,8 @@ func GetSavedJobByCareerID(careerID string) ([]models.SavedJob, error) {
 		return nil, fmt.Errorf("error retrieving saved jobs: %v", err)
 	}
 
-	// Lọc ra các công việc đã lưu mà isDeleted là false
-	var activeSavedJobs []models.SavedJob
-	for _, job := range careerSave.SaveJob {
-		if !job.IsDeleted {
-			activeSavedJobs = append(activeSavedJobs, job)
-		}
-	}
-
-	// Trả về danh sách các công việc đã lưu mà không bị xóa
-	return activeSavedJobs, nil
+	// Trả về danh sách các công việc đã lưu
+	return careerSave.SaveJob, nil
 }
 
 func GetViewedJobByCareerID(careerID string) ([]models.ViewedJob, error) {
