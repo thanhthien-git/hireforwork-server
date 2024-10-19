@@ -261,6 +261,10 @@ func GetCareersApplyJob(companyID string) ([]bson.M, error) {
 			{"foreignField", "_id"},
 			{"as", "careerDetail"},
 		}}},
+		{{"$match", bson.D{
+			{"jobDetail", bson.D{{"$ne", bson.A{}}}},
+			{"jobDetail.isDeleted", false},
+		}}},
 		{{"$project", bson.D{
 			{"_id", 1},
 			{"jobID", 1},
@@ -268,8 +272,9 @@ func GetCareersApplyJob(companyID string) ([]bson.M, error) {
 			{"careerEmail", bson.D{{"$arrayElemAt", bson.A{"$careerDetail.careerEmail", 0}}}},
 			{"status", 1},
 			{"createAt", 1},
-			{"jobRequireMent", "$jobDetail.jobRequireMent"},
 			{"jobTitle", bson.D{{"$arrayElemAt", bson.A{"$jobDetail.jobTitle", 0}}}},
+			{"jobRequirement", bson.D{{"$arrayElemAt", bson.A{"$jobDetail.jobRequirement", 0}}}},
+			{"jobLevel", bson.D{{"$arrayElemAt", bson.A{"$jobDetail.jobLevel", 0}}}},
 		}}},
 	}
 	cursor, err := careerApplyJob.Aggregate(context.TODO(), pipeline)
