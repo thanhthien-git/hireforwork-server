@@ -18,4 +18,5 @@ func setUpJobRouter(router *mux.Router, handler *handlers.Handler) {
 	router.HandleFunc("/jobs/{id}", handlers.GetJobByID).Methods("GET")
 	router.HandleFunc("/FilteredJobs/filter", jobHandler.GetFilteredJobs).Methods("GET")
 	router.HandleFunc("/suggest", jobHandler.GetSuggestJobs).Methods("GET")
+	router.HandleFunc("/jobs/create", handlers.CreateJobHandler).Methods("POST")
 }
