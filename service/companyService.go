@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"errors"
+	"hireforwork-server/interfaces"
 	"hireforwork-server/models"
 	"log"
 	"math"
@@ -16,7 +17,7 @@ import (
 )
 
 // Lấy danh sách company với phân trang
-func GetCompanies(page int, pageSize int, companyName, companyEmail string, startDate, endDate *string) (models.PaginateDocs[models.Company], error) {
+func GetCompanies(page int, pageSize int, filter interfaces.ICompanyFilter) (models.PaginateDocs[models.Company], error) {
 
 	var companies []models.Company
 
@@ -31,25 +32,25 @@ func GetCompanies(page int, pageSize int, companyName, companyEmail string, star
 
 	bsonFilter := bson.D{{"isDeleted", false}}
 
-	if companyName != "" {
-		bsonFilter = append(bsonFilter, bson.E{"companyName", bson.D{{"$regex", companyName}, {"$options", "i"}}})
+	if filter.CompanyName != "" {
+		bsonFilter = append(bsonFilter, bson.E{"companyName", bson.D{{"$regex", filter.CompanyName}, {"$options", "i"}}})
 	}
 
-	if companyEmail != "" {
-		bsonFilter = append(bsonFilter, bson.E{"contact.companyEmail", bson.D{{"$regex", companyEmail}, {"$options", "i"}}})
+	if filter.CompanyEmail != "" {
+		bsonFilter = append(bsonFilter, bson.E{"contact.companyEmail", bson.D{{"$regex", filter.CompanyEmail}, {"$options", "i"}}})
 	}
 
-	if startDate != nil || endDate != nil {
+	if filter.StartDate != nil || filter.EndDate != nil {
 		dateFilter := bson.D{}
 
-		if startDate != nil {
-			start, _ := time.Parse("2006-01-02", *startDate)
+		if filter.StartDate != nil {
+			start, _ := time.Parse("2006-01-02", *filter.StartDate)
 			startOfDay := time.Date(start.Year(), start.Month(), start.Day(), 0, 0, 0, 0, start.Location())
 			dateFilter = append(dateFilter, bson.E{"$gte", startOfDay})
 		}
 
-		if endDate != nil {
-			end, _ := time.Parse("2006-01-02", *endDate)
+		if filter.EndDate != nil {
+			end, _ := time.Parse("2006-01-02", *filter.EndDate)
 			endOfDay := time.Date(end.Year(), end.Month(), end.Day(), 23, 59, 59, 999, end.Location())
 			dateFilter = append(dateFilter, bson.E{"$lte", endOfDay})
 		} else {
@@ -201,23 +202,52 @@ func GetCareersByJobID(jobID string, companyID string) ([]models.UserInfo, error
 	return applicants, nil
 }
 
-func GetJobsByCompanyID(companyID string) ([]models.Jobs, error) {
+func GetJobsByCompanyID(companyID string, page int, pageSize int) (models.PaginateDocs[models.Jobs], error) {
 	companyObjectID, err := primitive.ObjectIDFromHex(companyID)
 	if err != nil {
 		log.Printf("Invalid company ID: %v", err)
+		return models.PaginateDocs[models.Jobs]{}, errors.New("invalid company ID")
 	}
+
+	if page < 1 {
+		page = 1
+	}
+	if pageSize < 1 {
+		pageSize = 10
+	}
+
+	skip := (page - 1) * pageSize
+
+	filter := bson.M{"isDeleted": false, "companyID": companyObjectID}
+
+	findOptions := options.Find().SetSkip(int64(skip)).SetLimit(int64(pageSize)).SetSort(bson.D{{"jobTitle", 1}})
+
+	totalDocs, err := JobCollection.CountDocuments(context.Background(), filter)
+	if err != nil {
+		return models.PaginateDocs[models.Jobs]{}, err
+	}
+
+	totalPages := int64(math.Ceil(float64(totalDocs) / float64(pageSize)))
 
 	var jobs []models.Jobs
-	cursor, err := JobCollection.Find(context.Background(), bson.M{"isDeleted": false, "companyID": companyObjectID})
+	cursor, err := JobCollection.Find(context.Background(), filter, findOptions)
 	if err != nil {
-		log.Printf("Error finding jobs for company: %v", err)
+		return models.PaginateDocs[models.Jobs]{}, err
 	}
+	defer cursor.Close(context.Background())
 
 	if err = cursor.All(context.Background(), &jobs); err != nil {
-		log.Printf("Error decoding jobs: %v", err)
+		return models.PaginateDocs[models.Jobs]{}, err
 	}
 
-	return jobs, nil
+	result := models.PaginateDocs[models.Jobs]{
+		Docs:        jobs,
+		TotalDocs:   totalDocs,
+		CurrentPage: int64(page),
+		TotalPage:   totalPages,
+	}
+
+	return result, nil
 }
 
 func DeleteJobByID(companyID string, jobID string) error {

@@ -19,10 +19,14 @@ func GetCompaniesHandler(w http.ResponseWriter, r *http.Request) {
 	page, _ := strconv.Atoi(pageStr)
 	pageSize, _ := strconv.Atoi(pageSizeStr)
 
-	companyName := r.URL.Query().Get("companyName")
-	companyEmail := r.URL.Query().Get("companyEmail")
+	filter := interfaces.ICompanyFilter{
+		CompanyName:  r.URL.Query().Get("companyName"),
+		CompanyEmail: r.URL.Query().Get("companyEmail"),
+		StartDate:    getPointer(r.URL.Query().Get("startDate")),
+		EndDate:      getPointer(r.URL.Query().Get("endDate")),
+	}
 
-	companies, err := service.GetCompanies(page, pageSize, companyName, companyEmail, nil, nil)
+	companies, err := service.GetCompanies(page, pageSize, filter)
 	if err != nil {
 		log.Printf("Error getting companies: %v", err)
 		http.Error(w, "Failed to get companies", http.StatusInternalServerError)
@@ -145,15 +149,28 @@ func GetCareersByJobID(w http.ResponseWriter, r *http.Request) {
 
 func GetJobsByCompany(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
+	companyID := vars["id"]
 
-	jobs, err := service.GetJobsByCompanyID(vars["id"])
+	pageStr := r.URL.Query().Get("page")
+	pageSizeStr := r.URL.Query().Get("pageSize")
+	page, err := strconv.Atoi(pageStr)
+	if err != nil || page < 1 {
+		page = 1
+	}
+
+	pageSize, err := strconv.Atoi(pageSizeStr)
+	if err != nil || pageSize < 1 {
+		pageSize = 10
+	}
+
+	jobs, err := service.GetJobsByCompanyID(companyID, page, pageSize)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	if json.NewEncoder(w).Encode(jobs); err != nil {
+	if err := json.NewEncoder(w).Encode(jobs); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -192,26 +209,10 @@ func GetCareerApply(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func FilterCompaniesByDateHandler(w http.ResponseWriter, r *http.Request) {
-	pageStr := r.URL.Query().Get("page")
-	pageSizeStr := r.URL.Query().Get("pageSize")
-	page, _ := strconv.Atoi(pageStr)
-	pageSize, _ := strconv.Atoi(pageSizeStr)
-
-	companyName := r.URL.Query().Get("companyName")
-	companyEmail := r.URL.Query().Get("companyEmail")
-
-	startDateStr := r.URL.Query().Get("startDate")
-	endDateStr := r.URL.Query().Get("endDate")
-
-	var endDate *string
-
-	if endDateStr != "" {
-		endDate = &endDateStr
+// Hàm phụ để chuyển chuỗi thành con trỏ (nếu giá trị không rỗng)
+func getPointer(value string) *string {
+	if value == "" {
+		return nil
 	}
-
-	companies, _ := service.GetCompanies(page, pageSize, companyName, companyEmail, &startDateStr, endDate)
-
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(companies)
+	return &value
 }
