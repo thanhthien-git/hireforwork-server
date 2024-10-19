@@ -23,9 +23,8 @@ type Jobs struct {
 	CreateAt        primitive.DateTime `bson:"createAt" json:"createAt"`
 	ExpireDate      primitive.DateTime `bson:"expireDate" json:"expireDate"`
 	CompanyID       primitive.ObjectID `bson:"companyID" json:"companyID"`
-	UserApply       []UserInfo         `bson:"userApply" json:"userApply"`
 	JobCategory     []string           `bson:"jobCategory" json:"jobCategory"`
 	Quantity        int64              `bson:"quantity" json:"quantity"`
 	JobDescription  string             `bson:"jobDescription" json:"jobDescription"`
-	JobLevel        []string           `bson:"jobLevel" json:"jobLevel"`
+	JobLevel        string             `bson:"jobLevel" json:"jobLevel"`
 }
