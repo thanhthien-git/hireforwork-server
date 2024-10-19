@@ -288,3 +288,32 @@ func GetCareersApplyJob(companyID string) ([]bson.M, error) {
 	}
 	return result, nil
 }
+
+func GetStatics(id primitive.ObjectID) (bson.M, error) {
+	result := bson.M{}
+
+	filter := bson.M{"isDeleted": false, "companyID": id}
+	pipeline := mongo.Pipeline{
+		{{"$match", filter}},
+		{{"$group", bson.D{
+			{"_id", "$careerID"},
+		}}},
+	}
+
+	cursor, _ := careerApplyJob.Aggregate(context.Background(), pipeline)
+	defer cursor.Close(context.Background())
+
+	totalCareer := 0
+	for cursor.Next(context.Background()) {
+		totalCareer++
+	}
+
+	totalResume, _ := careerApplyJob.CountDocuments(context.Background(), filter)
+	totalJob, _ := jobCollection.CountDocuments(context.Background(), filter)
+
+	result["totalCareer"] = totalCareer
+	result["totalResume"] = totalResume
+	result["totalJob"] = totalJob
+
+	return result, nil
+}

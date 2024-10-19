@@ -11,6 +11,7 @@ import (
 	"strconv"
 
 	"github.com/gorilla/mux"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 func GetCompaniesHandler(w http.ResponseWriter, r *http.Request) {
@@ -193,4 +194,17 @@ func GetCareerApply(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+}
+
+func GetStatics(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	id := vars["id"]
+	objID, _ := primitive.ObjectIDFromHex(id)
+	res, err := service.GetStatics(objID)
+	if err != nil {
+		http.Error(w, "Lỗi không xác định", http.StatusBadRequest)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(res)
 }
