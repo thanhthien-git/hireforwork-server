@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"encoding/json"
+	"fmt"
 	"hireforwork-server/interfaces"
 	"hireforwork-server/models"
 	"hireforwork-server/service"
@@ -30,6 +31,23 @@ func GetJob(w http.ResponseWriter, r *http.Request) {
 
 	if err := json.NewEncoder(w).Encode(jobs); err != nil {
 		http.Error(w, "Error encoding JSON", http.StatusInternalServerError)
+	}
+}
+
+func CreateJobHandler(w http.ResponseWriter, r *http.Request) {
+	var job models.Jobs
+	err := json.NewDecoder(r.Body).Decode(&job)
+	createJob, err := service.CreateJob(job)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("Lỗi khi tạo mới bài đăng"), http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusCreated)
+	err = json.NewEncoder(w).Encode(createJob)
+	if err != nil {
+		http.Error(w, "Có gì đó không ổn", http.StatusInternalServerError)
 	}
 }
 
@@ -92,3 +110,4 @@ func GetJobByID(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 }
+

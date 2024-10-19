@@ -184,30 +184,24 @@ func GetCareersByJobID(jobID string, companyID string) ([]models.UserInfo, error
 	}
 
 	var job models.Jobs
-	err = JobCollection.FindOne(context.Background(), bson.M{"_id": jobObjectID, "isDeleted": false, "companyID": companyObjectID}).Decode(&job)
+	err = jobCollection.FindOne(context.Background(), bson.M{"_id": jobObjectID, "isDeleted": false, "companyID": companyObjectID}).Decode(&job)
 	if err != nil {
 		log.Printf("Error finding job %v", err)
 	}
 
 	var applicants []models.UserInfo
-	for _, application := range job.UserApply {
-		var user models.UserInfo
-		user.UserId = application.UserId
-		user.IsAccepted = application.IsAccepted
-		user.CreateAt = application.CreateAt
-
-		applicants = append(applicants, user)
-	}
 
 	return applicants, nil
 }
 
 func GetJobsByCompanyID(companyID string, page int, pageSize int) (models.PaginateDocs[models.Jobs], error) {
+
 	companyObjectID, _ := primitive.ObjectIDFromHex(companyID)
 
 	if page < 1 {
 		page = 1
 	}
+
 	if pageSize < 1 {
 		pageSize = 10
 	}
@@ -218,12 +212,14 @@ func GetJobsByCompanyID(companyID string, page int, pageSize int) (models.Pagina
 
 	findOptions := options.Find().SetSkip(int64(skip)).SetLimit(int64(pageSize)).SetSort(bson.D{{"jobTitle", 1}})
 
-	totalDocs, _ := JobCollection.CountDocuments(context.Background(), filter)
+	totalDocs, _ := jobCollection.CountDocuments(context.Background(), filter)
 
 	totalPages := int64(math.Ceil(float64(totalDocs) / float64(pageSize)))
 
 	var jobs []models.Jobs
-	cursor, err := JobCollection.Find(context.Background(), filter, findOptions)
+
+	cursor, err := jobCollection.Find(context.Background(), filter, findOptions)
+
 	if err != nil {
 		return models.PaginateDocs[models.Jobs]{}, err
 	}
@@ -239,7 +235,6 @@ func GetJobsByCompanyID(companyID string, page int, pageSize int) (models.Pagina
 		CurrentPage: int64(page),
 		TotalPage:   totalPages,
 	}
-
 	return result, nil
 }
 
@@ -266,7 +261,7 @@ func DeleteJobByID(companyID string, jobID string) error {
 	opts := options.FindOneAndUpdate().SetReturnDocument(options.After)
 
 	var updatedJob models.Jobs
-	err = JobCollection.FindOneAndUpdate(context.Background(), filter, update, opts).Decode(&updatedJob)
+	err = jobCollection.FindOneAndUpdate(context.Background(), filter, update, opts).Decode(&updatedJob)
 	if err != nil {
 		log.Printf("Error deleting job: %v", err)
 		return errors.New("you do not have permission to delete this job")

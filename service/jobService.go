@@ -2,13 +2,12 @@ package service
 
 import (
 	"context"
+	"fmt"
 	"hireforwork-server/constants"
-	dbHelper "hireforwork-server/db"
 	"hireforwork-server/interfaces"
 	"hireforwork-server/models"
 	"log"
 	"math"
-	"os"
 	"time"
 
 	"go.mongodb.org/mongo-driver/bson"
@@ -17,19 +16,6 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
-var JobCollection *mongo.Collection
-var CareerApplyJobCollection *mongo.Collection
-
-func init() {
-	client, ctx, err := dbHelper.ConnectDB()
-	if err != nil {
-		log.Fatalf("Failed to connect to DB: %v", err)
-	}
-
-	JobCollection = dbHelper.GetCollection(ctx, os.Getenv("COLLECTION_JOB"), client)
-	CareerApplyJobCollection = dbHelper.GetCollection(ctx, os.Getenv("COLLECTION_CAREERAPPLYJOB"), client)
-
-}
 func GetJob(page, pageSize int) (models.PaginateDocs[models.Jobs], error) {
 	var jobs []models.Jobs
 
@@ -38,7 +24,6 @@ func GetJob(page, pageSize int) (models.PaginateDocs[models.Jobs], error) {
 	findOption := options.Find()
 	findOption.SetLimit(int64(pageSize))
 	findOption.SetSkip(int64(skip))
-	///100 documents -> 5
 
 	totalDocs, _ := jobCollection.CountDocuments(context.Background(), bson.D{})
 	totalPage := int64(math.Ceil(float64(totalDocs) / float64(pageSize)))
@@ -63,6 +48,23 @@ func GetJob(page, pageSize int) (models.PaginateDocs[models.Jobs], error) {
 
 	return result, nil
 }
+
+func CreateJob(job models.Jobs) (models.Jobs, error) {
+	currentTime := time.Now()
+	job.Id = primitive.NewObjectID()
+	job.CreateAt = primitive.NewDateTimeFromTime(currentTime)
+	job.ExpireDate = primitive.NewDateTimeFromTime(currentTime.AddDate(0, 0, 14))
+	job.IsClosed = false
+	job.IsHot = false
+	result, err := jobCollection.InsertOne(context.Background(), job)
+	fmt.Println(err)
+	if err != nil {
+		return models.Jobs{}, fmt.Errorf("Đã có lỗi xảy ra khi tạo bài đăng")
+	}
+	job.Id = result.InsertedID.(primitive.ObjectID)
+	return job, nil
+}
+
 func CheckIsExistedJob(request interfaces.IUserJob, collection *mongo.Collection) bool {
 	filter := bson.D{
 		{"isDeleted", false},
@@ -91,7 +93,7 @@ func ApplyForJob(request interfaces.IJobApply) (models.Jobs, error) {
 		Status:    constants.PENDING,
 	}
 
-	_, err := CareerApplyJobCollection.InsertOne(context.Background(), newApply)
+	_, err := careerApplyJob.InsertOne(context.Background(), newApply)
 	if err != nil {
 		log.Printf("Error inserting apply data into CareerApplyJob: %v", err)
 		return models.Jobs{}, err
@@ -101,7 +103,7 @@ func ApplyForJob(request interfaces.IJobApply) (models.Jobs, error) {
 	update := bson.M{"$push": bson.M{"userApply": request.IDCareer}}
 
 	var job models.Jobs
-	err = JobCollection.FindOneAndUpdate(context.Background(), filter, update).Decode(&job)
+	err = jobCollection.FindOneAndUpdate(context.Background(), filter, update).Decode(&job)
 	if err != nil {
 		log.Printf("Error updating job with user info: %v", err)
 		return models.Jobs{}, err
@@ -124,7 +126,6 @@ func (s *JobService) GetLatestJobs() ([]models.Jobs, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	// Lọc và sắp xếp công việc
 	filter := bson.M{"isDeleted": false, "isClosed": false}
 	opts := options.Find().SetSort(bson.D{{"createAt", -1}}).SetLimit(10)
 
@@ -152,9 +153,10 @@ func GetJobByID(jobID string) (models.Jobs, error) {
 	projection := bson.D{{"userApply", 0}}
 	findOptions := options.FindOne().SetProjection(projection)
 
-	err = JobCollection.FindOne(context.Background(), bson.D{{"_id", _id}}, findOptions).Decode(&job)
+	err = jobCollection.FindOne(context.Background(), bson.D{{"_id", _id}}, findOptions).Decode(&job)
 	if err != nil {
 		return models.Jobs{}, err
 	}
 	return job, nil
 }
+

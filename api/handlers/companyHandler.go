@@ -156,6 +156,7 @@ func GetJobsByCompany(w http.ResponseWriter, r *http.Request) {
 	pageSize, _ := strconv.Atoi(pageSizeStr)
 
 	jobs, err := service.GetJobsByCompanyID(companyID, page, pageSize)
+
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
