@@ -175,7 +175,7 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 
 		json.NewEncoder(w).Encode(response)
 	}
-} // UpdateUser là handler để cập nhật user theo ID
+}
 func UpdateUser(w http.ResponseWriter, r *http.Request) {
 	// Lấy ID từ URL
 	params := mux.Vars(r)

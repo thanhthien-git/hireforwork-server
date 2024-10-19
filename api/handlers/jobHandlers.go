@@ -8,8 +8,10 @@ import (
 	"log"
 	"net/http"
 	"strconv"
+	"time"
 
 	"github.com/gorilla/mux"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 func GetJob(w http.ResponseWriter, r *http.Request) {
@@ -91,4 +93,45 @@ func GetJobByID(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+}
+func (h *JobHandler) GetFilteredJobs(w http.ResponseWriter, r *http.Request) {
+	createDateStr := r.URL.Query().Get("createAt")
+	expireDateStr := r.URL.Query().Get("expireDate")
+
+	if createDateStr == "" {
+		http.Error(w, "createAt is required", http.StatusBadRequest)
+		return
+	}
+	if expireDateStr == "" {
+		http.Error(w, "expireDate is required", http.StatusBadRequest)
+		return
+	}
+
+	// Chuyển đổi chuỗi thành time.Time
+	createDate, err := time.Parse("2006-01-02", createDateStr)
+	createDate = createDate.UTC()
+	if err != nil {
+		http.Error(w, "Invalid createAt date", http.StatusBadRequest)
+		return
+	}
+
+	expireDate, err := time.Parse("2006-01-02", expireDateStr)
+	expireDate = expireDate.Add(24 * time.Hour).Add(-time.Nanosecond)
+	if err != nil {
+		http.Error(w, "Invalid expireDate date", http.StatusBadRequest)
+		return
+	}
+
+	// Chuyển đổi sang primitive.DateTime
+	createDatePrimitive := primitive.NewDateTimeFromTime(createDate)
+	expireDatePrimitive := primitive.NewDateTimeFromTime(expireDate)
+
+	jobs, err := h.JobService.GetFilteredJobs(r.Context(), createDatePrimitive, expireDatePrimitive)
+	if err != nil {
+		http.Error(w, "Error fetching jobs", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(jobs)
 }
