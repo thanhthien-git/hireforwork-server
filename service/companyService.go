@@ -203,11 +203,7 @@ func GetCareersByJobID(jobID string, companyID string) ([]models.UserInfo, error
 }
 
 func GetJobsByCompanyID(companyID string, page int, pageSize int) (models.PaginateDocs[models.Jobs], error) {
-	companyObjectID, err := primitive.ObjectIDFromHex(companyID)
-	if err != nil {
-		log.Printf("Invalid company ID: %v", err)
-		return models.PaginateDocs[models.Jobs]{}, errors.New("invalid company ID")
-	}
+	companyObjectID, _ := primitive.ObjectIDFromHex(companyID)
 
 	if page < 1 {
 		page = 1
@@ -222,10 +218,7 @@ func GetJobsByCompanyID(companyID string, page int, pageSize int) (models.Pagina
 
 	findOptions := options.Find().SetSkip(int64(skip)).SetLimit(int64(pageSize)).SetSort(bson.D{{"jobTitle", 1}})
 
-	totalDocs, err := JobCollection.CountDocuments(context.Background(), filter)
-	if err != nil {
-		return models.PaginateDocs[models.Jobs]{}, err
-	}
+	totalDocs, _ := JobCollection.CountDocuments(context.Background(), filter)
 
 	totalPages := int64(math.Ceil(float64(totalDocs) / float64(pageSize)))
 
