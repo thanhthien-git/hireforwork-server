@@ -150,18 +150,10 @@ func GetCareersByJobID(w http.ResponseWriter, r *http.Request) {
 func GetJobsByCompany(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	companyID := vars["id"]
-
 	pageStr := r.URL.Query().Get("page")
 	pageSizeStr := r.URL.Query().Get("pageSize")
-	page, err := strconv.Atoi(pageStr)
-	if err != nil || page < 1 {
-		page = 1
-	}
-
-	pageSize, err := strconv.Atoi(pageSizeStr)
-	if err != nil || pageSize < 1 {
-		pageSize = 10
-	}
+	page, _ := strconv.Atoi(pageStr)
+	pageSize, _ := strconv.Atoi(pageSizeStr)
 
 	jobs, err := service.GetJobsByCompanyID(companyID, page, pageSize)
 	if err != nil {
