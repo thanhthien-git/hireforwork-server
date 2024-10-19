@@ -158,6 +158,7 @@ func GetJobByID(jobID string) (models.Jobs, error) {
 	}
 	return job, nil
 }
+
 func (s *JobService) GetFilteredJobs(ctx context.Context, createDate, expireDate primitive.DateTime) ([]models.Jobs, error) {
 	filter := bson.M{
 		"createAt":   bson.M{"$gte": createDate},
