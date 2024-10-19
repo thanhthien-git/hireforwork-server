@@ -171,46 +171,48 @@ func UpdateUserByID(userID string, updatedUser models.User) (models.User, error)
 	// Return the updated user
 	return updatedUser, nil
 }
-func SaveJob(careerID string, jobID string) (models.CareerSaveJob, error) {
-	careerObjID, err := primitive.ObjectIDFromHex(careerID)
-	if err != nil {
-		return models.CareerSaveJob{}, err
+func SaveJob(careerID primitive.ObjectID, jobID primitive.ObjectID) (*mongo.UpdateResult, error) {
+
+	filter := bson.M{
+		"careerID": careerID,
+		"saveJob": bson.M{
+			"$elemMatch": bson.M{
+				"jobID": jobID,
+			},
+		},
 	}
 
-	jobObjID, err := primitive.ObjectIDFromHex(jobID)
-	if err != nil {
-		return models.CareerSaveJob{}, err
-	}
-
-	// Tạo đối tượng job đã lưu
-	savedJob := models.SavedJob{
-		JobID:     jobObjID,
-		IsDeleted: false,
-	}
-
-	// Cập nhật hoặc tạo mới nếu không tồn tại
-	filter := bson.M{"careerID": careerObjID}
 	update := bson.M{
-		"$addToSet": bson.M{"saveJob": savedJob},
+		"$set": bson.M{
+			"saveJob.$.isDeleted": false,
+		},
 	}
-
-	// Cập nhật hoặc tạo mới document trong collection CareerSaveJob
-	opts := options.Update().SetUpsert(true)
-	_, err = careerSaveJob.UpdateOne(context.Background(), filter, update, opts)
+	result, err := careerSaveJob.UpdateOne(context.Background(), filter, update)
 	if err != nil {
-		return models.CareerSaveJob{}, err
+		return nil, fmt.Errorf("Không thể cập nhật công việc: %v", err)
 	}
 
-	// Lấy lại document vừa được cập nhật
-	var careerSave models.CareerSaveJob
-	err = careerSaveJob.FindOne(context.Background(), filter).Decode(&careerSave)
-	if err != nil {
-		return models.CareerSaveJob{}, err
+	if result.MatchedCount == 0 {
+		filter = bson.M{
+			"careerID": careerID,
+		}
+		update = bson.M{
+			"$push": bson.M{
+				"saveJob": bson.M{
+					"jobID":     jobID,
+					"isDeleted": false,
+				},
+			},
+		}
+
+		result, err = careerSaveJob.UpdateOne(context.Background(), filter, update, options.Update().SetUpsert(true))
+		if err != nil {
+			return nil, fmt.Errorf("Không thể thêm công việc mới vào danh sách: %v", err)
+		}
 	}
 
-	return careerSave, nil
+	return result, nil
 }
-
 func CareerViewedJob(careerID string, jobID string) (models.CareerViewedJob, error) {
 	careerObjID, err := primitive.ObjectIDFromHex(careerID)
 	if err != nil {
@@ -289,27 +291,42 @@ func RemoveSaveJob(careerID string, jobID string) (models.CareerSaveJob, error) 
 	return updatedCareerSave, nil
 }
 
-func GetSavedJobByCareerID(careerID string) ([]models.SavedJob, error) {
-	careerObjID, err := primitive.ObjectIDFromHex(careerID)
-	if err != nil {
-		return nil, fmt.Errorf("invalid career ID: %v", err)
+func GetSavedJobsByCareerID(careerID string) ([]models.SavedJob, error) {
+
+	CareerID, err := primitive.ObjectIDFromHex(careerID)
+	pipeline := mongo.Pipeline{
+		{
+			{"$match", bson.D{
+				{"careerID", CareerID},
+			}},
+		},
+		{
+			{"$project", bson.D{
+				{"saveJob", bson.D{
+					{"$filter", bson.D{
+						{"input", "$saveJob"},
+						{"as", "job"},
+						{"cond", bson.D{
+							{"$eq", bson.A{"$$job.isDeleted", false}},
+						}},
+					}},
+				}},
+			}},
+		},
 	}
 
-	// Tạo filter để tìm kiếm CareerSaveJob theo careerID
-	filter := bson.M{"careerID": careerObjID}
-
-	// Tìm kiếm document trong collection CareerSaveJob
-	var careerSave models.CareerSaveJob
-	err = careerSaveJob.FindOne(context.Background(), filter).Decode(&careerSave)
+	result, err := careerSaveJob.Aggregate(context.Background(), pipeline)
 	if err != nil {
-		if err == mongo.ErrNoDocuments {
-			return nil, fmt.Errorf("no saved jobs found for career ID: %s", careerID)
-		}
-		return nil, fmt.Errorf("error retrieving saved jobs: %v", err)
+		log.Printf("Error during aggregation : %v", err)
 	}
+	defer result.Close(context.Background())
 
-	// Trả về danh sách các công việc đã lưu
-	return careerSave.SaveJob, nil
+	var results []models.CareerSaveJob
+	if err := result.All(context.Background(), &results); err != nil {
+		log.Printf("Error decoding results: %v", err)
+		return nil, err
+	}
+	return results[0].SaveJob, nil
 }
 
 func GetViewedJobByCareerID(careerID string) ([]models.ViewedJob, error) {

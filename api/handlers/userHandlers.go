@@ -203,25 +203,25 @@ func UpdateUser(w http.ResponseWriter, r *http.Request) {
 }
 
 func SaveJob(w http.ResponseWriter, r *http.Request) {
-	var payload struct {
-		CareerID string `json:"careerID"`
-		JobID    string `json:"jobID"`
-	}
-
-	if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
-		http.Error(w, "Invalid request payload", http.StatusBadRequest)
+	var request models.SaveJobRequest
+	body, _ := ioutil.ReadAll(r.Body)
+	if err := json.Unmarshal(body, &request); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-
-	savedJob, err := service.SaveJob(payload.CareerID, payload.JobID)
+	response, err := service.SaveJob(request.CareerID, request.JobID)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(savedJob)
+	if err := json.NewEncoder(w).Encode(response); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
 }
 
 func CareerViewedJob(w http.ResponseWriter, r *http.Request) {
@@ -265,32 +265,35 @@ func RemoveSaveJobHandler(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(updatedCareerSaveJob)
 }
 
-func GetSavedJobs(w http.ResponseWriter, r *http.Request) {
-    vars := mux.Vars(r)
-    id := vars["id"]  
+func GetSavedJobByID(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
 
-    savedJobs, err := service.GetSavedJobByCareerID(id)
-    if err != nil {
-        http.Error(w, err.Error(), http.StatusInternalServerError)
-        return
-    }
+	savedJobs, err := service.GetSavedJobsByCareerID(vars["id"])
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
 
-    w.Header().Set("Content-Type", "application/json")
-    w.WriteHeader(http.StatusOK)
-    json.NewEncoder(w).Encode(savedJobs)
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+
+	if err := json.NewEncoder(w).Encode(savedJobs); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
 }
 
 func GetViewedJobs(w http.ResponseWriter, r *http.Request) {
-    vars := mux.Vars(r)
-    id := vars["id"] 
+	vars := mux.Vars(r)
+	id := vars["id"]
 
-    viewedJobs, err := service.GetViewedJobByCareerID(id) 
-    if err != nil {
-        http.Error(w, err.Error(), http.StatusInternalServerError)
-        return
-    }
+	viewedJobs, err := service.GetViewedJobByCareerID(id)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
 
-    w.Header().Set("Content-Type", "application/json")
-    w.WriteHeader(http.StatusOK)
-    json.NewEncoder(w).Encode(viewedJobs)
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(viewedJobs)
 }
