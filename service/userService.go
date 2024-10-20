@@ -317,7 +317,7 @@ func GetSavedJobsByCareerID(careerID string) ([]models.SavedJob, error) {
 
 	result, err := careerSaveJob.Aggregate(context.Background(), pipeline)
 	if err != nil {
-		log.Printf("Error during aggregation : %v", err)
+		log.Printf("Lỗi trong khi thực hiện aggregation : %v", err)
 	}
 	defer result.Close(context.Background())
 
