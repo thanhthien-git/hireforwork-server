@@ -267,7 +267,7 @@ func RemoveSaveJob(careerID string, jobID string) (models.CareerSaveJob, error) 
 
 	filter := bson.M{
 		"careerID":      careerObjID,
-		"saveJob.jobId": jobObjID,
+		"saveJob.jobID": jobObjID,
 	}
 
 	update := bson.M{
@@ -287,4 +287,50 @@ func RemoveSaveJob(careerID string, jobID string) (models.CareerSaveJob, error) 
 	}
 
 	return updatedCareerSave, nil
+}
+
+func GetSavedJobByCareerID(careerID string) ([]models.SavedJob, error) {
+	careerObjID, err := primitive.ObjectIDFromHex(careerID)
+	if err != nil {
+		return nil, fmt.Errorf("invalid career ID: %v", err)
+	}
+
+	// Tạo filter để tìm kiếm CareerSaveJob theo careerID
+	filter := bson.M{"careerID": careerObjID}
+
+	// Tìm kiếm document trong collection CareerSaveJob
+	var careerSave models.CareerSaveJob
+	err = careerSaveJob.FindOne(context.Background(), filter).Decode(&careerSave)
+	if err != nil {
+		if err == mongo.ErrNoDocuments {
+			return nil, fmt.Errorf("no saved jobs found for career ID: %s", careerID)
+		}
+		return nil, fmt.Errorf("error retrieving saved jobs: %v", err)
+	}
+
+	// Trả về danh sách các công việc đã lưu
+	return careerSave.SaveJob, nil
+}
+
+func GetViewedJobByCareerID(careerID string) ([]models.ViewedJob, error) {
+	careerObjID, err := primitive.ObjectIDFromHex(careerID)
+	if err != nil {
+		return nil, fmt.Errorf("invalid career ID: %v", err)
+	}
+
+	// Tạo filter để tìm kiếm CareerViewedJob theo careerID
+	filter := bson.M{"careerID": careerObjID}
+
+	// Tìm kiếm document trong collection CareerViewedJob
+	var careerViewed models.CareerViewedJob
+	err = careerViewedJob.FindOne(context.Background(), filter).Decode(&careerViewed)
+	if err != nil {
+		if err == mongo.ErrNoDocuments {
+			return nil, fmt.Errorf("no viewed jobs found for career ID: %s", careerID)
+		}
+		return nil, fmt.Errorf("error retrieving viewed jobs: %v", err)
+	}
+
+	// Trả về danh sách các công việc đã xem
+	return careerViewed.ViewedJob, nil
 }
