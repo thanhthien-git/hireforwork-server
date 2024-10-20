@@ -163,8 +163,8 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		http.Error(w, "Invaild request", http.StatusBadRequest)
 	}
-	if credential.Role == "career" {
-		token, err := h.AuthService.LoginForCareer(credential)
+	if credential.Role == "CAREER" {
+		response, err := h.AuthService.LoginForCareer(credential)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusUnauthorized)
 			return
@@ -173,7 +173,7 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
 
-		json.NewEncoder(w).Encode(map[string]string{"token": token})
+		json.NewEncoder(w).Encode(response)
 	}
 } // UpdateUser là handler để cập nhật user theo ID
 func UpdateUser(w http.ResponseWriter, r *http.Request) {
@@ -263,4 +263,34 @@ func RemoveSaveJobHandler(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(updatedCareerSaveJob)
+}
+
+func GetSavedJobs(w http.ResponseWriter, r *http.Request) {
+    vars := mux.Vars(r)
+    id := vars["id"]  
+
+    savedJobs, err := service.GetSavedJobByCareerID(id)
+    if err != nil {
+        http.Error(w, err.Error(), http.StatusInternalServerError)
+        return
+    }
+
+    w.Header().Set("Content-Type", "application/json")
+    w.WriteHeader(http.StatusOK)
+    json.NewEncoder(w).Encode(savedJobs)
+}
+
+func GetViewedJobs(w http.ResponseWriter, r *http.Request) {
+    vars := mux.Vars(r)
+    id := vars["id"] 
+
+    viewedJobs, err := service.GetViewedJobByCareerID(id) 
+    if err != nil {
+        http.Error(w, err.Error(), http.StatusInternalServerError)
+        return
+    }
+
+    w.Header().Set("Content-Type", "application/json")
+    w.WriteHeader(http.StatusOK)
+    json.NewEncoder(w).Encode(viewedJobs)
 }

@@ -2,16 +2,18 @@ package handlers
 
 import (
 	"encoding/json"
+	"fmt"
+	"hireforwork-server/interfaces"
 	"hireforwork-server/models"
 	"hireforwork-server/service"
 	"log"
 	"net/http"
 	"strconv"
-	"time"
 
 	"github.com/gorilla/mux"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
+
 )
 
 func GetJob(w http.ResponseWriter, r *http.Request) {
@@ -35,51 +37,34 @@ func GetJob(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func ApplyJob(w http.ResponseWriter, r *http.Request) {
-
-	params := mux.Vars(r)
-	jobID := params["id"]
-
-	var input struct {
-		IDCareer   string `json:"idCareer"`
-		IsAccepted string `json:"isAccepted"`
-		CreateAt   string `json:"createAt"`
+func CreateJobHandler(w http.ResponseWriter, r *http.Request) {
+	var job models.Jobs
+	err := json.NewDecoder(r.Body).Decode(&job)
+	createJob, err := service.CreateJob(job)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("Lỗi khi tạo mới bài đăng"), http.StatusInternalServerError)
+		return
 	}
 
-	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusCreated)
+	err = json.NewEncoder(w).Encode(createJob)
+	if err != nil {
+		http.Error(w, "Có gì đó không ổn", http.StatusInternalServerError)
+	}
+}
+
+func ApplyJob(w http.ResponseWriter, r *http.Request) {
+
+	request := interfaces.IJobApply{}
+
+	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
 		http.Error(w, "Invalid input", http.StatusBadRequest)
 		log.Printf("Error decoding JSON: %v", err)
 		return
 	}
 
-	log.Printf("Received ApplyJob input: %+v", input)
-
-	userID, err := primitive.ObjectIDFromHex(input.IDCareer)
-	if err != nil {
-		http.Error(w, "Invalid career ID", http.StatusBadRequest)
-		log.Printf("Invalid career ID: %v", err)
-		return
-	}
-
-	createAt, err := time.Parse(time.RFC3339, input.CreateAt)
-	if err != nil {
-		http.Error(w, "Invalid date format", http.StatusBadRequest)
-		log.Printf("Invalid date format: %v", err)
-		return
-	}
-
-	userInfo := models.UserInfo{
-		UserId:     userID,
-		IsAccepted: input.IsAccepted,
-		CreateAt:   primitive.NewDateTimeFromTime(createAt),
-	}
-
-	updatedJob, err := service.ApplyForJob(jobID, userInfo)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		log.Printf("Error applying for job: %v", err)
-		return
-	}
+	updatedJob, _ := service.ApplyForJob(request)
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
@@ -123,3 +108,26 @@ func (h *JobHandler) GetSuggestJobs(w http.ResponseWriter, r *http.Request) {
 	}
 
 }
+
+func GetJobByID(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+
+	job, err := service.GetJobByID(vars["id"])
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusNotFound)
+		return
+	}
+
+	response := interfaces.IResponse[models.Jobs]{
+		Doc: job,
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+
+	if err := json.NewEncoder(w).Encode(response); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+}
+
