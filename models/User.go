@@ -23,3 +23,4 @@ type User struct {
 	Role          string             `bson:"role" json:"role"`
 	Profile       Profile            `bson:"profile,omitempty" json:"profile,omitempty"`
 }
+

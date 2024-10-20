@@ -12,6 +12,7 @@ import (
 
 	"github.com/dgrijalva/jwt-go"
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 )
 
@@ -29,7 +30,14 @@ type AuthService struct {
 
 type Claims struct {
 	Username string `json:"username"`
+	Role     string `json:"role"`
 	jwt.StandardClaims
+}
+
+type LoginResponse struct {
+	Token string             `json:"token"`
+	Id    primitive.ObjectID `json:"_id"`
+	Role  string             `json:"role"`
 }
 
 var userCollection *mongo.Collection
@@ -44,11 +52,14 @@ func init() {
 }
 
 // Generate token
-func (a AuthService) GenerateToken(username string) (string, error) {
+func (a AuthService) GenerateToken(username string, id primitive.ObjectID, role string) (string, error) {
 	expirationTime := time.Now().Add(100 * time.Minute)
 	claims := &Claims{
 		Username: username,
+		Role:     role,
 		StandardClaims: jwt.StandardClaims{
+			Subject:   id.Hex(),
+			IssuedAt:  time.Now().Unix(),
 			ExpiresAt: expirationTime.Unix(),
 		},
 	}
@@ -83,7 +94,7 @@ func (a *AuthService) CheckPasswordHash(hashedPassword, password string) bool {
 
 // user authentication
 
-func (a *AuthService) LoginForCareer(credential Credentials) (string, error) {
+func (a *AuthService) LoginForCareer(credential Credentials) (LoginResponse, error) {
 	var career models.User
 
 	err := userCollection.FindOne(context.Background(), bson.D{
@@ -92,17 +103,24 @@ func (a *AuthService) LoginForCareer(credential Credentials) (string, error) {
 	}).Decode(&career)
 
 	if err != nil {
-		return "", errors.New("Invalid username or password")
+		return LoginResponse{}, errors.New("Invalid username or password")
 	}
 
 	if !a.CheckPasswordHash(career.Password, credential.Password) {
-		return "", errors.New("Invalid username or password")
+		return LoginResponse{}, errors.New("Invalid username or password")
+	}
+	token, _ := a.GenerateToken(career.CareerEmail, career.Id, career.Role)
+
+	response := LoginResponse{
+		Token: token,
+		Id:    career.Id,
+		Role:  career.Role,
 	}
 
-	return a.GenerateToken(career.CareerEmail)
+	return response, nil
 }
 
-func (a *AuthService) LoginForCompany(credential Credentials) (string, error) {
+func (a *AuthService) LoginForCompany(credential Credentials) (LoginResponse, error) {
 	var company models.Company
 
 	err := companyCollection.FindOne(context.Background(), bson.D{
@@ -111,10 +129,17 @@ func (a *AuthService) LoginForCompany(credential Credentials) (string, error) {
 	}).Decode(&company)
 
 	if err != nil {
-		return "", errors.New("Invalid username or password")
+		return LoginResponse{}, errors.New("Invalid username or password")
 	}
 	if !a.CheckPasswordHash(company.Password, credential.Password) {
-		return "", errors.New("Wrong password")
+		return LoginResponse{}, errors.New("Wrong password")
 	}
-	return a.GenerateToken(company.Contact.CompanyEmail)
+	token, _ := a.GenerateToken(company.Contact.CompanyEmail, company.Id, "COMPANY")
+
+	response := LoginResponse{
+		Token: token,
+		Id:    company.Id,
+		Role:  "COMPANY",
+	}
+	return response, nil
 }
