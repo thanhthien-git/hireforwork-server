@@ -30,7 +30,7 @@ func GetJob(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 
 	if err := json.NewEncoder(w).Encode(jobs); err != nil {
-		http.Error(w, "Error encoding JSON", http.StatusInternalServerError)
+		http.Error(w, "Lỗi mã hóa JSON", http.StatusInternalServerError)
 	}
 }
 
@@ -56,8 +56,8 @@ func ApplyJob(w http.ResponseWriter, r *http.Request) {
 	request := interfaces.IJobApply{}
 
 	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
-		http.Error(w, "Invalid input", http.StatusBadRequest)
-		log.Printf("Error decoding JSON: %v", err)
+		http.Error(w, "Đầu vào không hợp lệ", http.StatusBadRequest)
+		log.Printf("Lỗi khi giải mã JSON: %v", err)
 		return
 	}
 
@@ -66,7 +66,7 @@ func ApplyJob(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	if err := json.NewEncoder(w).Encode(updatedJob); err != nil {
-		http.Error(w, "Error encoding response JSON", http.StatusInternalServerError)
+		http.Error(w, "Lỗi mã hóa JSON của phản hồi", http.StatusInternalServerError)
 	}
 }
 
@@ -77,8 +77,8 @@ type JobHandler struct {
 func (h *JobHandler) GetSuggestJobs(w http.ResponseWriter, r *http.Request) {
 	jobs, err := h.JobService.GetLatestJobs()
 	if err != nil {
-		http.Error(w, "Error fetching jobs", http.StatusInternalServerError)
-		log.Printf("Error fetching jobs: %v", err) // Ghi lại lỗi chi tiết
+		http.Error(w, "Lỗi khi lấy danh sách công việc", http.StatusInternalServerError)
+		log.Printf("Lỗi khi lấy danh sách công việc: %v", err) // Ghi lại lỗi chi tiết
 		return
 	}
 
@@ -110,4 +110,3 @@ func GetJobByID(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 }
-

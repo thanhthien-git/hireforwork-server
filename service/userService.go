@@ -52,13 +52,13 @@ func GetUser(page, pageSize int, careerFirstName, lastName, careerEmail, careerP
 	totalPage := int64(math.Ceil(float64(totalDocs) / float64(pageSize)))
 	cursor, err := userCollection.Find(context.Background(), bsonFilter, findOption)
 	if err != nil {
-		log.Printf("Error finding documents: %v", err)
+		log.Printf("Lỗi khi tìm kiếm người dùng: %v", err)
 		return models.PaginateDocs[models.User]{}, err
 	}
 	defer cursor.Close(context.Background())
 
 	if err = cursor.All(context.Background(), &users); err != nil {
-		log.Printf("Error parsing documents: %v", err)
+		log.Printf("Lỗi khi phân tích tài liệu: %v", err)
 		return models.PaginateDocs[models.User]{}, err
 	}
 
@@ -123,9 +123,9 @@ func CreateUser(user models.User) (models.User, error) {
 	result, err := userCollection.InsertOne(context.Background(), user)
 	if err != nil {
 		if mongo.IsDuplicateKeyError(err) {
-			return models.User{}, fmt.Errorf("Account has already been registered")
+			return models.User{}, fmt.Errorf("Tài khoản đã được đăng ký")
 		}
-		return models.User{}, fmt.Errorf("Something wrong")
+		return models.User{}, fmt.Errorf("Có gì đó không ổn")
 	}
 	user.Id = result.InsertedID.(primitive.ObjectID)
 	return user, nil
@@ -135,7 +135,7 @@ func UpdateUserByID(userID string, updatedUser models.User) (models.User, error)
 	// Convert userID from string to ObjectID
 	_id, err := primitive.ObjectIDFromHex(userID)
 	if err != nil {
-		return models.User{}, fmt.Errorf("invalid user ID format: %v", err)
+		return models.User{}, fmt.Errorf("Định dạng ID người dùng không hợp lệ: %v", err)
 	}
 
 	// Create filter to find the user by ID
@@ -145,7 +145,7 @@ func UpdateUserByID(userID string, updatedUser models.User) (models.User, error)
 	var existingUser models.User
 	err = userCollection.FindOne(context.Background(), filter).Decode(&existingUser)
 	if err != nil {
-		return models.User{}, fmt.Errorf("no user found with ID %s: %v", userID, err)
+		return models.User{}, fmt.Errorf("không tìm thấy người dùng với ID %s: %v", userID, err)
 	}
 
 	// Create update document to specify fields to update
@@ -160,12 +160,12 @@ func UpdateUserByID(userID string, updatedUser models.User) (models.User, error)
 	// Use UpdateOne to apply the update
 	result, err := userCollection.UpdateOne(context.Background(), filter, update)
 	if err != nil {
-		return models.User{}, fmt.Errorf("error updating user: %v", err)
+		return models.User{}, fmt.Errorf("lỗi khi cập nhật người dùng: %v", err)
 	}
 
 	// Check if any document was modified
 	if result.ModifiedCount == 0 {
-		return models.User{}, fmt.Errorf("no changes were made to the user with ID %s", userID)
+		return models.User{}, fmt.Errorf("không có thay đổi nào được thực hiện cho người dùng với ID %s", userID)
 	}
 
 	// Return the updated user
@@ -214,12 +214,12 @@ func SaveJob(careerID string, jobID string) (models.CareerSaveJob, error) {
 func CareerViewedJob(careerID string, jobID string) (models.CareerViewedJob, error) {
 	careerObjID, err := primitive.ObjectIDFromHex(careerID)
 	if err != nil {
-		return models.CareerViewedJob{}, fmt.Errorf("invalid career ID: %v", err)
+		return models.CareerViewedJob{}, fmt.Errorf("ID nghề nghiệp không hợp lệ: %v", err)
 	}
 
 	jobObjID, err := primitive.ObjectIDFromHex(jobID)
 	if err != nil {
-		return models.CareerViewedJob{}, fmt.Errorf("invalid job ID: %v", err)
+		return models.CareerViewedJob{}, fmt.Errorf("ID công việc không hợp lệ: %v", err)
 	}
 
 	viewedJob := models.ViewedJob{
@@ -235,18 +235,18 @@ func CareerViewedJob(careerID string, jobID string) (models.CareerViewedJob, err
 	opts := options.Update().SetUpsert(true)
 	result, err := careerViewedJob.UpdateOne(context.Background(), filter, update, opts)
 	if err != nil {
-		return models.CareerViewedJob{}, fmt.Errorf("failed to update viewed jobs: %v", err)
+		return models.CareerViewedJob{}, fmt.Errorf("Lỗi khi cập nhật các công việc đã xem: %v", err)
 	}
 
 	if result.MatchedCount == 0 && result.UpsertedCount == 0 {
-		return models.CareerViewedJob{}, fmt.Errorf("no document matched or inserted")
+		return models.CareerViewedJob{}, fmt.Errorf("không có tài liệu nào được khớp hoặc chèn")
 	}
 
 	// Lấy lại document đã cập nhật
 	var careerViewed models.CareerViewedJob
 	err = careerViewedJob.FindOne(context.Background(), filter).Decode(&careerViewed)
 	if err != nil {
-		return models.CareerViewedJob{}, fmt.Errorf("failed to retrieve updated document: %v", err)
+		return models.CareerViewedJob{}, fmt.Errorf("không thể truy xuất tài liệu đã cập nhật: %v", err)
 	}
 
 	return careerViewed, nil
@@ -257,12 +257,12 @@ func RemoveSaveJob(careerID string, jobID string) (models.CareerSaveJob, error) 
 
 	careerObjID, err := primitive.ObjectIDFromHex(careerID)
 	if err != nil {
-		return models.CareerSaveJob{}, fmt.Errorf("invalid career ID: %v", err)
+		return models.CareerSaveJob{}, fmt.Errorf("ID nghề nghiệp không hợp lệ: %v", err)
 	}
 
 	jobObjID, err := primitive.ObjectIDFromHex(jobID)
 	if err != nil {
-		return models.CareerSaveJob{}, fmt.Errorf("invalid job ID: %v", err)
+		return models.CareerSaveJob{}, fmt.Errorf("ID công việc không hợp lệ: %v", err)
 	}
 
 	filter := bson.M{
@@ -278,12 +278,12 @@ func RemoveSaveJob(careerID string, jobID string) (models.CareerSaveJob, error) 
 	var updatedCareerSave models.CareerSaveJob
 	result := careerSaveJob.FindOneAndUpdate(context.Background(), filter, update, opts)
 	if result.Err() != nil {
-		return models.CareerSaveJob{}, fmt.Errorf("failed to update document: %v", result.Err())
+		return models.CareerSaveJob{}, fmt.Errorf("Không thể cập nhật tài liệu: %v", result.Err())
 	}
 
 	err = result.Decode(&updatedCareerSave)
 	if err != nil {
-		return models.CareerSaveJob{}, fmt.Errorf("failed to decode updated document: %v", err)
+		return models.CareerSaveJob{}, fmt.Errorf("Không thể phân tích tài liệu đã cập nhật: %v", err)
 	}
 
 	return updatedCareerSave, nil
@@ -292,7 +292,7 @@ func RemoveSaveJob(careerID string, jobID string) (models.CareerSaveJob, error) 
 func GetSavedJobByCareerID(careerID string) ([]models.SavedJob, error) {
 	careerObjID, err := primitive.ObjectIDFromHex(careerID)
 	if err != nil {
-		return nil, fmt.Errorf("invalid career ID: %v", err)
+		return nil, fmt.Errorf("ID nghề nghiệp không hợp lệ: %v", err)
 	}
 
 	// Tạo filter để tìm kiếm CareerSaveJob theo careerID
@@ -303,9 +303,9 @@ func GetSavedJobByCareerID(careerID string) ([]models.SavedJob, error) {
 	err = careerSaveJob.FindOne(context.Background(), filter).Decode(&careerSave)
 	if err != nil {
 		if err == mongo.ErrNoDocuments {
-			return nil, fmt.Errorf("no saved jobs found for career ID: %s", careerID)
+			return nil, fmt.Errorf("Không tìm thấy công việc đã lưu cho ID nghề nghiệp: %s", careerID)
 		}
-		return nil, fmt.Errorf("error retrieving saved jobs: %v", err)
+		return nil, fmt.Errorf("Lỗi khi truy xuất các công việc đã lưu: %v", err)
 	}
 
 	// Trả về danh sách các công việc đã lưu
@@ -315,7 +315,7 @@ func GetSavedJobByCareerID(careerID string) ([]models.SavedJob, error) {
 func GetViewedJobByCareerID(careerID string) ([]models.ViewedJob, error) {
 	careerObjID, err := primitive.ObjectIDFromHex(careerID)
 	if err != nil {
-		return nil, fmt.Errorf("invalid career ID: %v", err)
+		return nil, fmt.Errorf("ID nghề nghiệp không hợp lệ: %v", err)
 	}
 
 	// Tạo filter để tìm kiếm CareerViewedJob theo careerID
@@ -326,9 +326,9 @@ func GetViewedJobByCareerID(careerID string) ([]models.ViewedJob, error) {
 	err = careerViewedJob.FindOne(context.Background(), filter).Decode(&careerViewed)
 	if err != nil {
 		if err == mongo.ErrNoDocuments {
-			return nil, fmt.Errorf("no viewed jobs found for career ID: %s", careerID)
+			return nil, fmt.Errorf("Không tìm thấy công việc đã xem cho ID nghề nghiệp: %s", careerID)
 		}
-		return nil, fmt.Errorf("error retrieving viewed jobs: %v", err)
+		return nil, fmt.Errorf("Lỗi khi truy xuất các công việc đã xem: %v", err)
 	}
 
 	// Trả về danh sách các công việc đã xem

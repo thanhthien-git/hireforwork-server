@@ -45,7 +45,7 @@ var userCollection *mongo.Collection
 func init() {
 	client, ctx, err := dbHelper.ConnectDB()
 	if err != nil {
-		log.Fatalf("Failed to connect to DB: %v", err)
+		log.Fatalf("Kết nối tới cơ sở dữ liệu thất bại: %v", err)
 	}
 	userCollection = dbHelper.GetCollection(ctx, os.Getenv("COLLECTION_CAREER"), client)
 	companyCollection = dbHelper.GetCollection(ctx, os.Getenv("COLLECTION_COMPANY"), client)
@@ -82,7 +82,7 @@ func (a *AuthService) ValidateToken(tokenString string) (*Claims, error) {
 	})
 
 	if err != nil || !token.Valid {
-		return nil, errors.New("Invalid token: " + err.Error())
+		return nil, errors.New("Token không hợp lệ: " + err.Error())
 	}
 	return claims, nil
 }
@@ -103,11 +103,11 @@ func (a *AuthService) LoginForCareer(credential Credentials) (LoginResponse, err
 	}).Decode(&career)
 
 	if err != nil {
-		return LoginResponse{}, errors.New("Invalid username or password")
+		return LoginResponse{}, errors.New("Tên đăng nhập hoặc mật khẩu không hợp lệ")
 	}
 
 	if !a.CheckPasswordHash(career.Password, credential.Password) {
-		return LoginResponse{}, errors.New("Invalid username or password")
+		return LoginResponse{}, errors.New("Tên đăng nhập hoặc mật khẩu không hợp lệ")
 	}
 	token, _ := a.GenerateToken(career.CareerEmail, career.Id, career.Role)
 
@@ -129,10 +129,10 @@ func (a *AuthService) LoginForCompany(credential Credentials) (LoginResponse, er
 	}).Decode(&company)
 
 	if err != nil {
-		return LoginResponse{}, errors.New("Invalid username or password")
+		return LoginResponse{}, errors.New("Tên đăng nhập hoặc mật khẩu không hợp lệ")
 	}
 	if !a.CheckPasswordHash(company.Password, credential.Password) {
-		return LoginResponse{}, errors.New("Wrong password")
+		return LoginResponse{}, errors.New("Mật khẩu sai")
 	}
 	token, _ := a.GenerateToken(company.Contact.CompanyEmail, company.Id, "COMPANY")
 

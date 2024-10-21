@@ -42,6 +42,6 @@ func GetCollection(ctx context.Context, collectionName string, client *mongo.Cli
 
 func LoadEnv() {
 	if err := godotenv.Load(".env"); err != nil {
-		log.Fatalf("Error loading .env file: %v", err)
+		log.Fatalf("Lỗi khi tải tệp .env: %v", err)
 	}
 }

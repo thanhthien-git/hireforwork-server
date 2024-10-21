@@ -13,7 +13,7 @@ var collection, jobCollection, companyCollection, careerSaveJob, careerViewedJob
 func init() {
 	client, ctx, err := dbHelper.ConnectDB()
 	if err != nil {
-		log.Fatalf("Failed to connect to DB: %v", err)
+		log.Fatalf("Kết nối tới cơ sở dữ liệu thất bại: %v", err)
 	}
 	collection = dbHelper.GetCollection(ctx, os.Getenv("COLLECTION_CAREER"), client)
 
