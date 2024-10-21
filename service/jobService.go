@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"hireforwork-server/constants"
 	"hireforwork-server/interfaces"
@@ -16,18 +17,50 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
-func GetJob(page, pageSize int) (models.PaginateDocs[models.Jobs], error) {
-	var jobs []models.Jobs
+func GetJob(page, pageSize int, jobTitle string, jobCategory string, companyName string) (models.PaginateDocs[models.Jobs], error) {
 
+	var jobs []models.Jobs
 	skip := (page - 1) * pageSize
 
 	findOption := options.Find()
 	findOption.SetLimit(int64(pageSize))
 	findOption.SetSkip(int64(skip))
 
-	totalDocs, _ := jobCollection.CountDocuments(context.Background(), bson.D{})
+	filter := bson.M{
+		"isDeleted": false,
+	}
+	if jobTitle != "" {
+		filter["jobTitle"] = bson.M{
+			"$regex": primitive.Regex{Pattern: jobTitle, Options: "i"},
+		}
+	}
+	// if workingLocation != "" {
+	// 	filter["workingLocation"] = bson.M{
+	// 		"$elemMatch": bson.M{
+	// 			"$regex": primitive.Regex{Pattern: workingLocation, Options: "i"},
+	// 		},
+	// 	}
+	// }
+
+	if jobCategory != "" {
+		filter["jobCategory"] = bson.M{
+			"$elemMatch": bson.M{
+				"$regex": primitive.Regex{Pattern: jobCategory, Options: "i"},
+			},
+		}
+	}
+	if companyName != "" {
+		companyID, err := GetCompanyIDByName(companyName)
+		if err != nil {
+			return models.PaginateDocs[models.Jobs]{}, err
+		}
+
+		filter["companyID"] = companyID
+	}
+
+	totalDocs, _ := jobCollection.CountDocuments(context.Background(), filter)
 	totalPage := int64(math.Ceil(float64(totalDocs) / float64(pageSize)))
-	cursor, err := jobCollection.Find(context.Background(), bson.D{{"isDeleted", false}}, findOption)
+	cursor, err := jobCollection.Find(context.Background(), filter, findOption)
 	if err != nil {
 		log.Printf("Error finding documents: %v", err)
 		return models.PaginateDocs[models.Jobs]{}, err
@@ -48,10 +81,35 @@ func GetJob(page, pageSize int) (models.PaginateDocs[models.Jobs], error) {
 
 	return result, nil
 }
+func GetCompanyIDByName(companyName string) (primitive.ObjectID, error) {
+	if companyCollection == nil {
+		return primitive.NilObjectID, errors.New("CompanyCollection is not initialized")
+	}
+
+	var company struct {
+		ID primitive.ObjectID `bson:"_id"`
+	}
+
+	filter := bson.M{
+		"companyName": bson.M{
+			"$regex": primitive.Regex{Pattern: companyName, Options: "i"},
+		},
+	}
+
+	err := companyCollection.FindOne(context.Background(), filter).Decode(&company)
+	if err != nil {
+		if err == mongo.ErrNoDocuments {
+			return primitive.NilObjectID, errors.New("company not found")
+		}
+		return primitive.NilObjectID, err
+	}
+
+	return company.ID, nil
+}
 
 func CreateJob(job models.Jobs) (models.Jobs, error) {
 	currentTime := time.Now()
-	job.Id = primitive.NewObjectID()
+	job.ID = primitive.NewObjectID()
 	job.CreateAt = primitive.NewDateTimeFromTime(currentTime)
 	job.ExpireDate = primitive.NewDateTimeFromTime(currentTime.AddDate(0, 0, 14))
 	job.IsClosed = false
@@ -61,7 +119,7 @@ func CreateJob(job models.Jobs) (models.Jobs, error) {
 	if err != nil {
 		return models.Jobs{}, fmt.Errorf("Đã có lỗi xảy ra khi tạo bài đăng")
 	}
-	job.Id = result.InsertedID.(primitive.ObjectID)
+	job.ID = result.InsertedID.(primitive.ObjectID)
 	return job, nil
 }
 
@@ -138,6 +196,55 @@ func ApplyForJob(request interfaces.IJobApply) (models.Jobs, error) {
 	}
 
 	return job, nil
+}
+
+func GetSavedJobsByCareerID(careerID string) ([]models.SavedJob, error) {
+
+	CareerID, err := primitive.ObjectIDFromHex(careerID)
+	pipeline := mongo.Pipeline{
+		{
+			{"$match", bson.D{
+				{"careerID", CareerID},
+			}},
+		},
+		{
+			{"$project", bson.D{
+				{"saveJob", bson.D{
+					{"$filter", bson.D{
+						{"input", "$saveJob"},
+						{"as", "job"},
+						{"cond", bson.D{
+							{"$eq", bson.A{"$$job.isDeleted", false}},
+						}},
+					}},
+				}},
+			}},
+		},
+	}
+
+	result, err := careerSaveJob.Aggregate(context.Background(), pipeline)
+	if err != nil {
+		log.Printf("Error during aggregation : %v", err)
+	}
+	defer result.Close(context.Background())
+
+	var results []models.CareerSaveJob
+	if err := result.All(context.Background(), &results); err != nil {
+		log.Printf("Error decoding results: %v", err)
+		return nil, err
+	}
+	return results[0].SaveJob, nil
+}
+func GetJobApplyHistoryByCareerID(careerID string) (models.CareerApplyJob, error) {
+	CareerID, err := primitive.ObjectIDFromHex(careerID)
+	var applyJobs models.CareerApplyJob
+	filter := bson.M{"careerID": CareerID, "isDeleted": false}
+	err = careerApplyJob.FindOne(context.Background(), filter).Decode(&applyJobs)
+	if err != nil {
+		log.Printf("Error for job history: %v", err)
+		return models.CareerApplyJob{}, err
+	}
+	return applyJobs, nil
 }
 
 type JobService struct {
