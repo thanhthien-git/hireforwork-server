@@ -11,7 +11,7 @@ func setUpCareerRoutes(router *mux.Router, handler *handlers.Handler) {
 	// Public Routes
 	router.HandleFunc("/careers/auth/login", handler.Login).Methods("POST")
 	router.HandleFunc("/careers/create", handlers.CreateUser).Methods("POST")
-
+	router.HandleFunc("/{id}/change-password", handler.ChangePassword).Methods("PUT")
 	// Protected Routes (with JWT middleware)
 	careerRouter := router.PathPrefix("/careers").Subrouter()
 	careerRouter.Use(middleware.JWTMiddleware(handler.AuthService))

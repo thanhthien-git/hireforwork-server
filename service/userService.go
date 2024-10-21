@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"hireforwork-server/models"
 	"hireforwork-server/utils"
@@ -333,4 +334,32 @@ func GetViewedJobByCareerID(careerID string) ([]models.ViewedJob, error) {
 
 	// Trả về danh sách các công việc đã xem
 	return careerViewed.ViewedJob, nil
+}
+func ChangePassword(userID string, oldPassword string, newPassword string) (models.User, error) {
+	userObjID, err := primitive.ObjectIDFromHex(userID)
+	if err != nil {
+		return models.User{}, errors.New("invalid user ID")
+	}
+
+	var user models.User
+	err = userCollection.FindOne(context.Background(), bson.M{"_id": userObjID, "isDeleted": false}).Decode(&user)
+	if err != nil {
+		return models.User{}, errors.New("user not found")
+	}
+
+	// Kiểm tra mật khẩu cũ
+	authService := &AuthService{} // Thay thế bằng instance thực tế nếu cần
+	if !authService.CheckPasswordHash(user.Password, oldPassword) {
+		return models.User{}, errors.New("old password is incorrect")
+	}
+
+	// Mã hóa mật khẩu mới
+	hashedNewPassword := utils.EncodeToSHA(newPassword)
+	_, err = userCollection.UpdateOne(context.Background(), bson.M{"_id": userObjID}, bson.M{"$set": bson.M{"password": hashedNewPassword}})
+	if err != nil {
+		return models.User{}, errors.New("failed to update password")
+	}
+
+	user.Password = hashedNewPassword // Cập nhật mật khẩu trong đối tượng người dùng
+	return user, nil
 }

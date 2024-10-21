@@ -143,6 +143,26 @@ func (s *JobService) GetLatestJobs() ([]models.Jobs, error) {
 	return jobs, nil
 }
 
+func (s *JobService) GetFilteredJobs(ctx context.Context, createDate, expireDate time.Time) ([]models.Jobs, error) {
+	filter := bson.M{
+		"createAt":   bson.M{"$gte": createDate},
+		"expireDate": bson.M{"$lte": expireDate},
+	}
+	opts := options.Find().SetSort(bson.D{{"createAt", -1}})
+
+	cursor, err := s.Collection.Find(ctx, filter, opts)
+	if err != nil {
+		return nil, err
+	}
+	defer cursor.Close(ctx)
+
+	var jobs []models.Jobs
+	if err = cursor.All(ctx, &jobs); err != nil {
+		return nil, err
+	}
+	return jobs, nil
+}
+
 func GetJobByID(jobID string) (models.Jobs, error) {
 	_id, err := primitive.ObjectIDFromHex(jobID)
 	if err != nil {
@@ -159,4 +179,3 @@ func GetJobByID(jobID string) (models.Jobs, error) {
 	}
 	return job, nil
 }
-

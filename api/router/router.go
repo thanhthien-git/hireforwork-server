@@ -16,7 +16,6 @@ func SetUpRouter() *mux.Router {
 	handler := &handlers.Handler{
 		AuthService: authService,
 	}
-
 	setUpCareerRoutes(router, handler)
 	setUpCompanyRoutes(router, handler)
 	setUpJobRouter(router, handler)
