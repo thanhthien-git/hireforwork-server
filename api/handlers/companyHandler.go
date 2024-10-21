@@ -145,8 +145,11 @@ func GetCareersByJobID(w http.ResponseWriter, r *http.Request) {
 
 func GetJobsByCompany(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
-
-	jobs, err := service.GetJobsByCompanyID(vars["id"])
+	pageStr := r.URL.Query().Get("page")
+	pageSizeStr := r.URL.Query().Get("limit")
+	page, _ := strconv.Atoi(pageStr)
+	pageSize, _ := strconv.Atoi(pageSizeStr)
+	jobs, err := service.GetJobsByCompanyID(vars["id"], int64(page), int64(pageSize))
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -175,4 +178,19 @@ func DeleteJobByID(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte(`{"message": "Job deleted successfully"}`))
+}
+
+func GetCareerApply(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	res, err := service.GetCareersApplyJob(vars["id"])
+	if err != nil {
+		http.Error(w, "Lỗi xảy ra", http.StatusBadRequest)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	if json.NewEncoder(w).Encode(res); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
 }
