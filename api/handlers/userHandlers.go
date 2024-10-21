@@ -6,12 +6,15 @@ import (
 	"hireforwork-server/interfaces"
 	"hireforwork-server/models"
 	"hireforwork-server/service"
+	"hireforwork-server/utils"
 	"io/ioutil"
 	"log"
 	"net/http"
 	"strconv"
+	"time"
 
 	"github.com/gorilla/mux"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 var imageAllowedType = map[string]bool{
@@ -175,7 +178,64 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 
 		json.NewEncoder(w).Encode(response)
 	}
-} // UpdateUser là handler để cập nhật user theo ID
+} 
+
+func RegisterCareer(w http.ResponseWriter, r *http.Request) {
+
+	type RegisterRequest struct {
+        CareerEmail string `json:"careerEmail"`
+        Password    string `json:"password"`
+    }
+
+    var req RegisterRequest
+
+    if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+        http.Error(w, "Invalid input", http.StatusBadRequest)
+        return
+    }
+
+    existingUser, err := service.GetUserByEmail(req.CareerEmail)
+    if err == nil && existingUser.CareerEmail != "" {
+        http.Error(w, "Career email already exists", http.StatusConflict) 
+        return
+    }
+
+    hashedPassword := utils.EncodeToSHA(req.Password)
+
+    newUser := models.User{
+        Id:            primitive.NewObjectID(),
+        CareerEmail:   req.CareerEmail,
+        Password:      hashedPassword,
+        CreateAt:      primitive.NewDateTimeFromTime(time.Now()), 
+        IsDeleted:     false,
+        Role:          "Career",
+        FirstName:     "", 
+        LastName:      "",
+        CareerPhone:   "",
+        CareerPicture: "",
+        Languages:     nil,
+        Profile:       models.Profile{}, 
+    }
+
+    createdUser, err := service.CreateUser(newUser)
+    if err != nil {
+        if err.Error() == "duplicate_email" {
+            http.Error(w, "Career email already exists", http.StatusConflict)
+            return
+        }
+        http.Error(w, fmt.Sprintf("Error creating user: %v", err), http.StatusInternalServerError)
+        return
+    }
+
+    w.Header().Set("Content-Type", "application/json")
+    w.WriteHeader(http.StatusOK)
+    json.NewEncoder(w).Encode(map[string]string{
+        "message": "User registered successfully",
+        "_id":     createdUser.Id.Hex(),
+    })
+}
+
+// UpdateUser là handler để cập nhật user theo ID
 func UpdateUser(w http.ResponseWriter, r *http.Request) {
 	// Lấy ID từ URL
 	params := mux.Vars(r)

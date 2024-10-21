@@ -7,18 +7,25 @@ import (
 	"github.com/gorilla/mux"
 )
 
-func setUpCompanyRoutes(router *mux.Router, handler *handlers.Handler) {
-	router.HandleFunc("/companies/auth/login", handler.LoginCompany).Methods("POST")
-	router.HandleFunc("/companies/{id}", handlers.GetCompanyByID).Methods("GET")
-	router.HandleFunc("/companies/create", handlers.CreateCompany).Methods("POST")
-	router.HandleFunc("/companies/get-job/{id}", handlers.GetJobsByCompany).Methods("GET")
+func setUpCareerRoutes(router *mux.Router, handler *handlers.Handler) {
+	// Public Routes
+	router.HandleFunc("/careers/auth/login", handler.Login).Methods("POST")
+	router.HandleFunc("/careers/register", handlers.RegisterCareer).Methods("POST")
+	router.HandleFunc("/careers/create", handlers.CreateUser).Methods("POST")
 
-	jobProtected := router.PathPrefix("/companies").Subrouter()
-	jobProtected.Use(middleware.JWTMiddleware(handler.AuthService))
-	jobProtected.HandleFunc("", handlers.GetCompaniesHandler).Methods("GET")
-	router.HandleFunc("/companies/get-applier/{id}", handlers.GetCareerApply).Methods("GET")
-	//router.HandleFunc("/companies/get-statis/{id}", handlers.GetStatics).Methods("GET")
-	jobProtected.HandleFunc("/{id}", handlers.DeleteCompanyByID).Methods("DELETE")
-	// router.HandleFunc("/companies/update/{id}", handlers.UpdateCompanyByID).Methods("PUT")
-	// router.HandleFunc("/companies/{companyId}/jobs/{jobId}", handlers.DeleteJobByID).Methods("DELETE")
+	// Protected Routes (with JWT middleware)
+	careerRouter := router.PathPrefix("/careers").Subrouter()
+	careerRouter.Use(middleware.JWTMiddleware(handler.AuthService))
+
+	careerRouter.HandleFunc("", handlers.GetUser).Methods("GET")
+	careerRouter.HandleFunc("/{id}", handlers.GetUserByID).Methods("GET")
+	careerRouter.HandleFunc("/{id}", handlers.DeleteUserByID).Methods("DELETE")
+	careerRouter.HandleFunc("/{id}", handlers.UpdateUser).Methods("PUT")
+
+	// Additional Routes
+	router.HandleFunc("/careers/savedjobs/{id}", handlers.GetSavedJobs).Methods("GET")
+	router.HandleFunc("/careers/viewedjobs/{id}", handlers.GetViewedJobs).Methods("GET")
+	router.HandleFunc("/careers/savejob", handlers.SaveJob).Methods("POST")
+	router.HandleFunc("/careers/viewedjob", handlers.CareerViewedJob).Methods("POST")
+	router.HandleFunc("/careers/{careerID}/saved-jobs/{jobID}", handlers.RemoveSaveJobHandler).Methods("DELETE")
 }
