@@ -12,7 +12,7 @@ func JWTMiddleware(authService *service.AuthService) func(http.Handler) http.Han
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			authHeader := r.Header.Get("Authorization")
 			if authHeader == "" {
-				http.Error(w, "Authorization header is required", http.StatusUnauthorized)
+				http.Error(w, "Yêu cầu phải có header Authorization", http.StatusUnauthorized)
 				return
 			}
 
@@ -21,7 +21,7 @@ func JWTMiddleware(authService *service.AuthService) func(http.Handler) http.Han
 			// Validate the token
 			claims, err := authService.ValidateToken(tokenString)
 			if err != nil {
-				http.Error(w, "Invalid token: "+err.Error(), http.StatusUnauthorized)
+				http.Error(w, "Token không hợp lệ: "+err.Error(), http.StatusUnauthorized)
 				return
 			}
 

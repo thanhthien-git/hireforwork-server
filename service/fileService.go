@@ -25,7 +25,7 @@ func InitFireBase() *firebase.App {
 	opt := option.WithCredentialsFile(credentialsFile)
 	app, err := firebase.NewApp(context.Background(), nil, opt)
 	if err != nil {
-		log.Fatalf("Error when create new app")
+		log.Fatalf("Lỗi khi tạo ứng dụng mới")
 	}
 	return app
 
@@ -36,7 +36,7 @@ func UploadFile(file multipart.File, header *multipart.FileHeader, folder string
 
 	bucketName := os.Getenv("FIRBASE_BUCKET")
 	if bucketName == "" {
-		log.Fatalf("Bucket not found")
+		log.Fatalf("Không tìm thấy bucket")
 	}
 
 	ctx := context.Background()
@@ -48,7 +48,7 @@ func UploadFile(file multipart.File, header *multipart.FileHeader, folder string
 
 	bucket, err := client.Bucket(bucketName)
 	if err != nil {
-		return "", fmt.Errorf("Error when open connect to bucket")
+		return "", fmt.Errorf("Lỗi khi mở kết nối với bucket")
 	}
 	fileName := CreateFileName(folder, header)
 	object := bucket.Object(fileName)
@@ -57,11 +57,11 @@ func UploadFile(file multipart.File, header *multipart.FileHeader, folder string
 	wc.ContentType = contentType
 
 	if _, err := io.Copy(wc, file); err != nil {
-		return "", fmt.Errorf("failed to copy file data: %v", err)
+		return "", fmt.Errorf("Không thể sao chép dữ liệu file: %v", err)
 	}
 
 	if err := wc.Close(); err != nil {
-		return "", fmt.Errorf("failed to close writer: %v", err)
+		return "", fmt.Errorf("Không thể đóng writer: %v", err)
 	}
 
 	if err := object.ACL().Set(ctx, storage.AllUsers, storage.RoleReader); err != nil {
@@ -69,7 +69,7 @@ func UploadFile(file multipart.File, header *multipart.FileHeader, folder string
 	}
 	attrs, err := object.Attrs(ctx)
 	if err != nil {
-		return "", fmt.Errorf("Error when retrieve object: ", err.Error())
+		return "", fmt.Errorf("Lỗi khi lấy thông tin đối tượng: ", err.Error())
 	}
 	return attrs.MediaLink, nil
 }

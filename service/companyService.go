@@ -49,13 +49,13 @@ func GetCompanies(page int, pageSize int, companyName, companyEmail string) (mod
 	totalPage := int64(math.Ceil(float64(totalDocs) / float64(pageSize)))
 	cursor, err := companyCollection.Find(context.Background(), bsonFilter, findOptions)
 	if err != nil {
-		log.Printf("Error finding documents: %v", err)
+		log.Printf("Lỗi khi tìm kiếm công ty: %v", err)
 		return models.PaginateDocs[models.Company]{}, err
 	}
 	defer cursor.Close(context.Background())
 
 	if err = cursor.All(context.Background(), &companies); err != nil {
-		log.Printf("Error parsing documents: %v", err)
+		log.Printf("Lỗi khi phân tích tài liệu: %v", err)
 		return models.PaginateDocs[models.Company]{}, err
 	}
 
@@ -119,7 +119,7 @@ func DeleteCompanyByID(companyID string) http.Response {
 func UpdateCompanyByID(companyID string, updatedCompany models.Company) (models.Company, error) {
 	_id, err := primitive.ObjectIDFromHex(companyID)
 	if err != nil {
-		return models.Company{}, errors.New("invalid company ID format")
+		return models.Company{}, errors.New("Định dạng ID công ty không hợp lệ")
 	}
 
 	filter := bson.M{"_id": _id, "isDeleted": false}
@@ -140,7 +140,7 @@ func UpdateCompanyByID(companyID string, updatedCompany models.Company) (models.
 	err = companyCollection.FindOneAndUpdate(context.Background(), filter, update, opts).Decode(&updatedDoc)
 	if err != nil {
 		if err == mongo.ErrNoDocuments {
-			return models.Company{}, errors.New("company not found or already deleted")
+			return models.Company{}, errors.New("công ty không tìm thấy hoặc đã bị xóa")
 		}
 		return models.Company{}, err
 	}
@@ -151,18 +151,18 @@ func UpdateCompanyByID(companyID string, updatedCompany models.Company) (models.
 func GetCareersByJobID(jobID string, companyID string) ([]models.UserInfo, error) {
 	jobObjectID, err := primitive.ObjectIDFromHex(jobID)
 	if err != nil {
-		log.Printf("Invalid job ID: %v", err)
+		log.Printf("ID công việc không hợp lệ: %v", err)
 	}
 
 	companyObjectID, err := primitive.ObjectIDFromHex(companyID)
 	if err != nil {
-		log.Printf("Invalid company ID: %v", err)
+		log.Printf("ID công ty không hợp lệ: %v", err)
 	}
 
 	var job models.Jobs
 	err = jobCollection.FindOne(context.Background(), bson.M{"_id": jobObjectID, "isDeleted": false, "companyID": companyObjectID}).Decode(&job)
 	if err != nil {
-		log.Printf("Error finding job %v", err)
+		log.Printf("Lỗi khi tìm kiếm công việc: %v", err)
 	}
 
 	var applicants []models.UserInfo
@@ -192,11 +192,11 @@ func GetJobsByCompanyID(companyID string, page int64, limit int64) (models.Pagin
 	var jobs []models.Jobs
 	cursor, err := jobCollection.Find(context.Background(), bson.M{"isDeleted": false, "companyID": companyObjectID}, findOptions)
 	if err != nil {
-		log.Printf("Error finding jobs for company: %v", err)
+		log.Printf("Lỗi khi tìm kiếm công việc cho công ty: %v", err)
 	}
 
 	if err = cursor.All(context.Background(), &jobs); err != nil {
-		log.Printf("Error decoding jobs: %v", err)
+		log.Printf("Lỗi khi phân tích công việc: %v", err)
 	}
 
 	result := models.PaginateDocs[models.Jobs]{
@@ -212,14 +212,14 @@ func GetJobsByCompanyID(companyID string, page int64, limit int64) (models.Pagin
 func DeleteJobByID(companyID string, jobID string) error {
 	jobObjectID, err := primitive.ObjectIDFromHex(jobID)
 	if err != nil {
-		log.Printf("Invalid job ID: %v", err)
-		return errors.New("invalid job ID")
+		log.Printf("ID công việc không hợp lệ:: %v", err)
+		return errors.New("ID công việc không hợp lệ")
 	}
 
 	companyObjectID, err := primitive.ObjectIDFromHex(companyID)
 	if err != nil {
-		log.Printf("Invalid company ID: %v", err)
-		return errors.New("invalid company ID")
+		log.Printf("ID công ty không hợp lệ: %v", err)
+		return errors.New("ID công ty không hợp lệ")
 	}
 
 	filter := bson.M{"_id": jobObjectID, "companyID": companyObjectID, "isDeleted": false}
@@ -234,8 +234,8 @@ func DeleteJobByID(companyID string, jobID string) error {
 	var updatedJob models.Jobs
 	err = jobCollection.FindOneAndUpdate(context.Background(), filter, update, opts).Decode(&updatedJob)
 	if err != nil {
-		log.Printf("Error deleting job: %v", err)
-		return errors.New("you do not have permission to delete this job")
+		log.Printf("Lỗi khi xóa công việc: %v", err)
+		return errors.New("Bạn không có quyền xóa công việc này")
 	}
 
 	return nil

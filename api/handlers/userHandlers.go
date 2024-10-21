@@ -52,7 +52,7 @@ func GetUser(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 
 	if err := json.NewEncoder(w).Encode(users); err != nil {
-		http.Error(w, "Error encoding JSON", http.StatusInternalServerError)
+		http.Error(w, "Lỗi mã hóa JSON", http.StatusInternalServerError)
 	}
 }
 
@@ -116,7 +116,7 @@ func UploadImage(w http.ResponseWriter, r *http.Request) {
 
 	contentType := header.Header.Get("Content-Type")
 	if _, ok := imageAllowedType[contentType]; !ok {
-		http.Error(w, "Only JPEG, JPG, and PNG are allowed.", http.StatusBadRequest)
+		http.Error(w, "Chỉ cho phép định dạng JPEG, JPG và PNG.", http.StatusBadRequest)
 		return
 	}
 
@@ -142,7 +142,7 @@ func UploadResume(w http.ResponseWriter, r *http.Request) {
 
 	contentType := header.Header.Get("Content-Type")
 	if _, ok := resumeAllowFile[contentType]; !ok {
-		http.Error(w, "Only DOCX, PDF are allowed", http.StatusBadRequest)
+		http.Error(w, "Chỉ cho phép định dạng DOCX và PDF.", http.StatusBadRequest)
 		return
 	}
 
@@ -161,7 +161,7 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 
 	err := json.NewDecoder(r.Body).Decode(&credential)
 	if err != nil {
-		http.Error(w, "Invaild request", http.StatusBadRequest)
+		http.Error(w, "Yêu cầu không hợp lệ", http.StatusBadRequest)
 	}
 	if credential.Role == "CAREER" {
 		response, err := h.AuthService.LoginForCareer(credential)
@@ -185,7 +185,7 @@ func UpdateUser(w http.ResponseWriter, r *http.Request) {
 	// Giải mã JSON từ request body thành models.User
 	var user models.User
 	if err := json.NewDecoder(r.Body).Decode(&user); err != nil {
-		http.Error(w, "Invalid input", http.StatusBadRequest)
+		http.Error(w, "Đầu vào không hợp lệ", http.StatusBadRequest)
 		return
 	}
 
@@ -209,7 +209,7 @@ func SaveJob(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
-		http.Error(w, "Invalid request payload", http.StatusBadRequest)
+		http.Error(w, "Payload yêu cầu không hợp lệ", http.StatusBadRequest)
 		return
 	}
 
@@ -231,7 +231,7 @@ func CareerViewedJob(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
-		http.Error(w, "Invalid request payload", http.StatusBadRequest)
+		http.Error(w, "Payload yêu cầu không hợp lệ", http.StatusBadRequest)
 		return
 	}
 
@@ -266,31 +266,31 @@ func RemoveSaveJobHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func GetSavedJobs(w http.ResponseWriter, r *http.Request) {
-    vars := mux.Vars(r)
-    id := vars["id"]  
+	vars := mux.Vars(r)
+	id := vars["id"]
 
-    savedJobs, err := service.GetSavedJobByCareerID(id)
-    if err != nil {
-        http.Error(w, err.Error(), http.StatusInternalServerError)
-        return
-    }
+	savedJobs, err := service.GetSavedJobByCareerID(id)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
 
-    w.Header().Set("Content-Type", "application/json")
-    w.WriteHeader(http.StatusOK)
-    json.NewEncoder(w).Encode(savedJobs)
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(savedJobs)
 }
 
 func GetViewedJobs(w http.ResponseWriter, r *http.Request) {
-    vars := mux.Vars(r)
-    id := vars["id"] 
+	vars := mux.Vars(r)
+	id := vars["id"]
 
-    viewedJobs, err := service.GetViewedJobByCareerID(id) 
-    if err != nil {
-        http.Error(w, err.Error(), http.StatusInternalServerError)
-        return
-    }
+	viewedJobs, err := service.GetViewedJobByCareerID(id)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
 
-    w.Header().Set("Content-Type", "application/json")
-    w.WriteHeader(http.StatusOK)
-    json.NewEncoder(w).Encode(viewedJobs)
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(viewedJobs)
 }

@@ -29,13 +29,13 @@ func GetJob(page, pageSize int) (models.PaginateDocs[models.Jobs], error) {
 	totalPage := int64(math.Ceil(float64(totalDocs) / float64(pageSize)))
 	cursor, err := jobCollection.Find(context.Background(), bson.D{{"isDeleted", false}}, findOption)
 	if err != nil {
-		log.Printf("Error finding documents: %v", err)
+		log.Printf("Lỗi khi tìm kiếm việc: %v", err)
 		return models.PaginateDocs[models.Jobs]{}, err
 	}
 	defer cursor.Close(context.Background())
 
 	if err = cursor.All(context.Background(), &jobs); err != nil {
-		log.Printf("Error parsing job documents: %v", err)
+		log.Printf("Lỗi khi phân tích công việc: %v", err)
 		return models.PaginateDocs[models.Jobs]{}, err
 	}
 
@@ -77,7 +77,7 @@ func CheckIsExistedJob(request interfaces.IUserJob, collection *mongo.Collection
 		if err == mongo.ErrNoDocuments {
 			return false
 		}
-		log.Printf("Error occurred while checking job existence: %v", err)
+		log.Printf("Đã xảy ra lỗi khi kiểm tra sự tồn tại của công việc: %v", err)
 		return false
 	}
 	return true
@@ -95,7 +95,7 @@ func ApplyForJob(request interfaces.IJobApply) (models.Jobs, error) {
 
 	_, err := careerApplyJob.InsertOne(context.Background(), newApply)
 	if err != nil {
-		log.Printf("Error inserting apply data into CareerApplyJob: %v", err)
+		log.Printf("Lỗi khi chèn dữ liệu ứng tuyển vào CareerApplyJob: %v", err)
 		return models.Jobs{}, err
 	}
 
@@ -105,7 +105,7 @@ func ApplyForJob(request interfaces.IJobApply) (models.Jobs, error) {
 	var job models.Jobs
 	err = jobCollection.FindOneAndUpdate(context.Background(), filter, update).Decode(&job)
 	if err != nil {
-		log.Printf("Error updating job with user info: %v", err)
+		log.Printf("Lỗi khi cập nhật thông tin người dùng cho công việc: %v", err)
 		return models.Jobs{}, err
 	}
 
@@ -159,4 +159,3 @@ func GetJobByID(jobID string) (models.Jobs, error) {
 	}
 	return job, nil
 }
-
