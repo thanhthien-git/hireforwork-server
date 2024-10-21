@@ -164,12 +164,18 @@ func GetJobsByCompany(w http.ResponseWriter, r *http.Request) {
 }
 
 func DeleteJobByID(w http.ResponseWriter, r *http.Request) {
-	vars := mux.Vars(r)
-	companyID := vars["companyId"]
-	jobID := vars["jobId"]
-
-	// Xóa job nếu companyID khớp với companyID của job
-	err := service.DeleteJobByID(companyID, jobID)
+	var resBody struct {
+		JobIds []string `json:"ids"`
+	}
+	body, _ := ioutil.ReadAll(r.Body)
+	defer r.Body.Close()
+	err := json.Unmarshal(body, &resBody)
+	if err != nil {
+		http.Error(w, "Invalid request format", http.StatusBadRequest)
+		log.Printf("Error unmarshalling request body: %v", err)
+		return
+	}
+	err = service.DeleteJobByID(resBody.JobIds)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		log.Printf("Error deleting job: %v", err)
@@ -178,7 +184,7 @@ func DeleteJobByID(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	w.Write([]byte(`{"message": "Job deleted successfully"}`))
+	w.Write([]byte(`{"message": "Xóa thành công"}`))
 }
 
 func GetCareerApply(w http.ResponseWriter, r *http.Request) {

@@ -209,33 +209,28 @@ func GetJobsByCompanyID(companyID string, page int64, limit int64) (models.Pagin
 	return result, nil
 }
 
-func DeleteJobByID(companyID string, jobID string) error {
-	jobObjectID, err := primitive.ObjectIDFromHex(jobID)
-	if err != nil {
-		log.Printf("Invalid job ID: %v", err)
-		return errors.New("invalid job ID")
+func DeleteJobByID(jobID []string) error {
+	ids := make([]primitive.ObjectID, len(jobID))
+
+	for index, element := range jobID {
+		objID, _ := primitive.ObjectIDFromHex(element)
+		ids[index] = objID
 	}
 
-	companyObjectID, err := primitive.ObjectIDFromHex(companyID)
-	if err != nil {
-		log.Printf("Invalid company ID: %v", err)
-		return errors.New("invalid company ID")
+	filter := bson.M{
+		"_id":       bson.M{"$in": ids},
+		"isDeleted": false,
 	}
 
-	filter := bson.M{"_id": jobObjectID, "companyID": companyObjectID, "isDeleted": false}
 	update := bson.M{
 		"$set": bson.M{
 			"isDeleted": true,
 		},
 	}
 
-	opts := options.FindOneAndUpdate().SetReturnDocument(options.After)
-
-	var updatedJob models.Jobs
-	err = jobCollection.FindOneAndUpdate(context.Background(), filter, update, opts).Decode(&updatedJob)
+	_, err := jobCollection.UpdateMany(context.Background(), filter, update)
 	if err != nil {
-		log.Printf("Error deleting job: %v", err)
-		return errors.New("you do not have permission to delete this job")
+		return errors.New("Bạn không thuộc bộ phận này")
 	}
 
 	return nil
