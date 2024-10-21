@@ -20,10 +20,14 @@ func GetCompaniesHandler(w http.ResponseWriter, r *http.Request) {
 	page, _ := strconv.Atoi(pageStr)
 	pageSize, _ := strconv.Atoi(pageSizeStr)
 
-	companyName := r.URL.Query().Get("companyName")
-	companyEmail := r.URL.Query().Get("companyEmail")
+	filter := interfaces.ICompanyFilter{
+		CompanyName:  r.URL.Query().Get("companyName"),
+		CompanyEmail: r.URL.Query().Get("companyEmail"),
+		StartDate:    getPointer(r.URL.Query().Get("startDate")),
+		EndDate:      getPointer(r.URL.Query().Get("endDate")),
+	}
 
-	companies, err := service.GetCompanies(page, pageSize, companyName, companyEmail)
+	companies, err := service.GetCompanies(page, pageSize, filter)
 	if err != nil {
 		log.Printf("Error getting companies: %v", err)
 		http.Error(w, "Failed to get companies", http.StatusInternalServerError)
@@ -146,18 +150,21 @@ func GetCareersByJobID(w http.ResponseWriter, r *http.Request) {
 
 func GetJobsByCompany(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
+	companyID := vars["id"]
 	pageStr := r.URL.Query().Get("page")
-	pageSizeStr := r.URL.Query().Get("limit")
+	pageSizeStr := r.URL.Query().Get("pageSize")
 	page, _ := strconv.Atoi(pageStr)
 	pageSize, _ := strconv.Atoi(pageSizeStr)
-	jobs, err := service.GetJobsByCompanyID(vars["id"], int64(page), int64(pageSize))
+
+	jobs, err := service.GetJobsByCompanyID(companyID, page, pageSize)
+
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	if json.NewEncoder(w).Encode(jobs); err != nil {
+	if err := json.NewEncoder(w).Encode(jobs); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -213,4 +220,11 @@ func GetStatics(w http.ResponseWriter, r *http.Request) {
 	}
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(res)
+}
+// Hàm phụ để chuyển chuỗi thành con trỏ (nếu giá trị không rỗng)
+func getPointer(value string) *string {
+	if value == "" {
+		return nil
+	}
+	return &value
 }
