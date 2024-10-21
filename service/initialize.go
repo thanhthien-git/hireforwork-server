@@ -21,9 +21,9 @@ func init() {
 
 	companyCollection = dbHelper.GetCollection(ctx, os.Getenv("COLLECTION_COMPANY"), client)
 
-	careerSaveJob = dbHelper.GetCollection(ctx, os.Getenv("COLLECTION_CAREERSAVEJOB"), client)
+	careerSaveJob = dbHelper.GetCollection(ctx, os.Getenv("COLLECTION_CAREER_SAVEDJOB"), client)
 
-	careerViewedJob = dbHelper.GetCollection(ctx, os.Getenv("COLLECTION_CAREERVIEWEDJOB"), client)
+	careerViewedJob = dbHelper.GetCollection(ctx, os.Getenv("COLLECTION_CAREER_VIEWEDJOB"), client)
 
 	careerApplyJob = dbHelper.GetCollection(ctx, os.Getenv("COLLECTION_CAREER_APPLYJOB"), client)
 

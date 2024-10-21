@@ -318,10 +318,8 @@ func GetViewedJobByCareerID(careerID string) ([]models.ViewedJob, error) {
 		return nil, fmt.Errorf("invalid career ID: %v", err)
 	}
 
-	// Tạo filter để tìm kiếm CareerViewedJob theo careerID
 	filter := bson.M{"careerID": careerObjID}
 
-	// Tìm kiếm document trong collection CareerViewedJob
 	var careerViewed models.CareerViewedJob
 	err = careerViewedJob.FindOne(context.Background(), filter).Decode(&careerViewed)
 	if err != nil {
@@ -331,6 +329,5 @@ func GetViewedJobByCareerID(careerID string) ([]models.ViewedJob, error) {
 		return nil, fmt.Errorf("error retrieving viewed jobs: %v", err)
 	}
 
-	// Trả về danh sách các công việc đã xem
 	return careerViewed.ViewedJob, nil
 }
