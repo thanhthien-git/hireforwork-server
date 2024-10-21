@@ -181,10 +181,12 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 } 
 
 func RegisterCareer(w http.ResponseWriter, r *http.Request) {
-
-	type RegisterRequest struct {
-        CareerEmail string `json:"careerEmail"`
-        Password    string `json:"password"`
+    type RegisterRequest struct {
+        FirstName    string `json:"firstName"`
+        LastName     string `json:"lastName"`
+        CareerEmail  string `json:"careerEmail"`
+        CareerPhone  string `json:"careerPhone"`
+        Password     string `json:"password"`
     }
 
     var req RegisterRequest
@@ -196,7 +198,7 @@ func RegisterCareer(w http.ResponseWriter, r *http.Request) {
 
     existingUser, err := service.GetUserByEmail(req.CareerEmail)
     if err == nil && existingUser.CareerEmail != "" {
-        http.Error(w, "Career email already exists", http.StatusConflict) 
+        http.Error(w, "Career email already exists", http.StatusConflict)
         return
     }
 
@@ -206,14 +208,14 @@ func RegisterCareer(w http.ResponseWriter, r *http.Request) {
         Id:            primitive.NewObjectID(),
         CareerEmail:   req.CareerEmail,
         Password:      hashedPassword,
-        CreateAt:      primitive.NewDateTimeFromTime(time.Now()), 
+        CreateAt:      primitive.NewDateTimeFromTime(time.Now()),
         IsDeleted:     false,
         Role:          "Career",
-        FirstName:     "", 
-        LastName:      "",
-        CareerPhone:   "",
+        FirstName:     req.FirstName,
+        LastName:      req.LastName,
+        CareerPhone:   req.CareerPhone,
         CareerPicture: "",
-        Languages:     nil,
+        Languages:     nil, 
         Profile:       models.Profile{}, 
     }
 
@@ -234,6 +236,7 @@ func RegisterCareer(w http.ResponseWriter, r *http.Request) {
         "_id":     createdUser.Id.Hex(),
     })
 }
+
 
 // UpdateUser là handler để cập nhật user theo ID
 func UpdateUser(w http.ResponseWriter, r *http.Request) {
