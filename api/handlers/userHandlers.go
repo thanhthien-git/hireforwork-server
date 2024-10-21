@@ -175,14 +175,12 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 
 		json.NewEncoder(w).Encode(response)
 	}
-} // UpdateUser là handler để cập nhật user theo ID
+}
 func UpdateUser(w http.ResponseWriter, r *http.Request) {
-	// Lấy ID từ URL
 	params := mux.Vars(r)
 	id := params["id"]
 
-	log.Printf("User ID: %s", id) // Log ID để kiểm tra
-	// Giải mã JSON từ request body thành models.User
+	log.Printf("User ID: %s", id)
 	var user models.User
 	if err := json.NewDecoder(r.Body).Decode(&user); err != nil {
 		http.Error(w, "Invalid input", http.StatusBadRequest)
@@ -266,31 +264,86 @@ func RemoveSaveJobHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func GetSavedJobs(w http.ResponseWriter, r *http.Request) {
-    vars := mux.Vars(r)
-    id := vars["id"]  
+	vars := mux.Vars(r)
+	id := vars["id"]
 
-    savedJobs, err := service.GetSavedJobByCareerID(id)
-    if err != nil {
-        http.Error(w, err.Error(), http.StatusInternalServerError)
-        return
-    }
+	savedJobs, err := service.GetSavedJobByCareerID(id)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
 
-    w.Header().Set("Content-Type", "application/json")
-    w.WriteHeader(http.StatusOK)
-    json.NewEncoder(w).Encode(savedJobs)
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(savedJobs)
 }
 
 func GetViewedJobs(w http.ResponseWriter, r *http.Request) {
-    vars := mux.Vars(r)
-    id := vars["id"] 
+	vars := mux.Vars(r)
+	id := vars["id"]
 
-    viewedJobs, err := service.GetViewedJobByCareerID(id) 
-    if err != nil {
-        http.Error(w, err.Error(), http.StatusInternalServerError)
-        return
-    }
+	viewedJobs, err := service.GetViewedJobByCareerID(id)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
 
-    w.Header().Set("Content-Type", "application/json")
-    w.WriteHeader(http.StatusOK)
-    json.NewEncoder(w).Encode(viewedJobs)
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(viewedJobs)
+}
+func (h *Handler) ChangePassword(w http.ResponseWriter, r *http.Request) {
+	params := mux.Vars(r)
+	id := params["id"]
+
+	var payload struct {
+		Username    string `json:"username"`
+		Password    string `json:"password"`
+		OldPassword string `json:"oldPassword"`
+		NewPassword string `json:"newPassword"`
+	}
+
+	// Giải mã JSON từ request body
+	if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
+		http.Error(w, "Invalid request payload", http.StatusBadRequest)
+		return
+	}
+
+	// Xác thực thông tin đăng nhập
+	credential := service.Credentials{
+		Username: payload.Username,
+		Password: payload.Password,
+	}
+
+	// Kiểm tra thông tin đăng nhập
+	_, err := h.AuthService.LoginForCareer(credential)
+	if err != nil {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	// Gọi service để thay đổi mật khẩu
+	updatedUser, err := service.ChangePassword(id, payload.OldPassword, payload.NewPassword)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	// Tạo token mới cho người dùng
+	token, err := h.AuthService.GenerateToken(updatedUser.CareerEmail, updatedUser.Id, updatedUser.Role)
+	if err != nil {
+		http.Error(w, "Could not generate token", http.StatusInternalServerError)
+		return
+	}
+	// Trả về thông tin người dùng và token mới
+	responsePayload := struct {
+		User  models.User `json:"user"`
+		Token string      `json:"token"`
+	}{
+		User:  updatedUser,
+		Token: token,
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(responsePayload)
 }
