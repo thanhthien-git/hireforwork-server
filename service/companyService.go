@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"hireforwork-server/models"
+	"hireforwork-server/utils"
 	"log"
 	"math"
 	"net/http"
@@ -282,4 +283,32 @@ func GetCareersApplyJob(companyID string) ([]bson.M, error) {
 		return nil, err
 	}
 	return result, nil
+}
+func ChangePasswordCompany(companyID string, oldPassword string, newPassword string) (models.Company, error) {
+	companyObjID, err := primitive.ObjectIDFromHex(companyID)
+	if err != nil {
+		return models.Company{}, errors.New("invalid company ID")
+	}
+
+	var company models.Company
+	err = companyCollection.FindOne(context.Background(), bson.M{"_id": companyObjID, "isDeleted": false}).Decode(&company)
+	if err != nil {
+		return models.Company{}, errors.New("company not found")
+	}
+
+	authService := &AuthService{}
+	if !authService.CheckPasswordHash(company.Password, oldPassword) {
+		return models.Company{}, errors.New("old password is incorrect")
+	}
+
+	hashedNewPassword := utils.EncodeToSHA(newPassword)
+	result, err := companyCollection.UpdateOne(context.Background(), bson.M{"_id": companyObjID}, bson.M{"$set": bson.M{"password": hashedNewPassword}})
+	if err != nil {
+		return models.Company{}, errors.New("failed to update password")
+	}
+	if result.ModifiedCount == 0 {
+		return models.Company{}, errors.New("no documents were modified")
+	}
+	company.Password = hashedNewPassword
+	return company, nil
 }

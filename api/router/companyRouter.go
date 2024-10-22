@@ -12,6 +12,7 @@ func setUpCompanyRoutes(router *mux.Router, handler *handlers.Handler) {
 	router.HandleFunc("/companies/{id}", handlers.GetCompanyByID).Methods("GET")
 	router.HandleFunc("/companies/create", handlers.CreateCompany).Methods("POST")
 	router.HandleFunc("/companies/get-job/{id}", handlers.GetJobsByCompany).Methods("GET")
+	router.HandleFunc("/{id}/change-password-company", handler.ChangePasswordCompany).Methods("PUT")
 
 	jobProtected := router.PathPrefix("/companies").Subrouter()
 	jobProtected.Use(middleware.JWTMiddleware(handler.AuthService))

@@ -347,19 +347,17 @@ func ChangePassword(userID string, oldPassword string, newPassword string) (mode
 		return models.User{}, errors.New("user not found")
 	}
 
-	// Kiểm tra mật khẩu cũ
-	authService := &AuthService{} // Thay thế bằng instance thực tế nếu cần
+	authService := &AuthService{}
 	if !authService.CheckPasswordHash(user.Password, oldPassword) {
 		return models.User{}, errors.New("old password is incorrect")
 	}
 
-	// Mã hóa mật khẩu mới
 	hashedNewPassword := utils.EncodeToSHA(newPassword)
 	_, err = userCollection.UpdateOne(context.Background(), bson.M{"_id": userObjID}, bson.M{"$set": bson.M{"password": hashedNewPassword}})
 	if err != nil {
 		return models.User{}, errors.New("failed to update password")
 	}
 
-	user.Password = hashedNewPassword // Cập nhật mật khẩu trong đối tượng người dùng
+	user.Password = hashedNewPassword
 	return user, nil
 }
