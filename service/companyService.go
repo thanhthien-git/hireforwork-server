@@ -209,33 +209,28 @@ func GetJobsByCompanyID(companyID string, page int64, limit int64) (models.Pagin
 	return result, nil
 }
 
-func DeleteJobByID(companyID string, jobID string) error {
-	jobObjectID, err := primitive.ObjectIDFromHex(jobID)
-	if err != nil {
-		log.Printf("Invalid job ID: %v", err)
-		return errors.New("invalid job ID")
+func DeleteJobByID(jobID []string) error {
+	ids := make([]primitive.ObjectID, len(jobID))
+
+	for index, element := range jobID {
+		objID, _ := primitive.ObjectIDFromHex(element)
+		ids[index] = objID
 	}
 
-	companyObjectID, err := primitive.ObjectIDFromHex(companyID)
-	if err != nil {
-		log.Printf("Invalid company ID: %v", err)
-		return errors.New("invalid company ID")
+	filter := bson.M{
+		"_id":       bson.M{"$in": ids},
+		"isDeleted": false,
 	}
 
-	filter := bson.M{"_id": jobObjectID, "companyID": companyObjectID, "isDeleted": false}
 	update := bson.M{
 		"$set": bson.M{
 			"isDeleted": true,
 		},
 	}
 
-	opts := options.FindOneAndUpdate().SetReturnDocument(options.After)
-
-	var updatedJob models.Jobs
-	err = jobCollection.FindOneAndUpdate(context.Background(), filter, update, opts).Decode(&updatedJob)
+	_, err := jobCollection.UpdateMany(context.Background(), filter, update)
 	if err != nil {
-		log.Printf("Error deleting job: %v", err)
-		return errors.New("you do not have permission to delete this job")
+		return errors.New("Bạn không thuộc bộ phận này")
 	}
 
 	return nil
@@ -261,6 +256,10 @@ func GetCareersApplyJob(companyID string) ([]bson.M, error) {
 			{"foreignField", "_id"},
 			{"as", "careerDetail"},
 		}}},
+		{{"$match", bson.D{
+			{"jobDetail", bson.D{{"$ne", bson.A{}}}},
+			{"jobDetail.isDeleted", false},
+		}}},
 		{{"$project", bson.D{
 			{"_id", 1},
 			{"jobID", 1},
@@ -268,8 +267,9 @@ func GetCareersApplyJob(companyID string) ([]bson.M, error) {
 			{"careerEmail", bson.D{{"$arrayElemAt", bson.A{"$careerDetail.careerEmail", 0}}}},
 			{"status", 1},
 			{"createAt", 1},
-			{"jobRequireMent", "$jobDetail.jobRequireMent"},
 			{"jobTitle", bson.D{{"$arrayElemAt", bson.A{"$jobDetail.jobTitle", 0}}}},
+			{"jobRequirement", bson.D{{"$arrayElemAt", bson.A{"$jobDetail.jobRequirement", 0}}}},
+			{"jobLevel", bson.D{{"$arrayElemAt", bson.A{"$jobDetail.jobLevel", 0}}}},
 		}}},
 	}
 	cursor, err := careerApplyJob.Aggregate(context.TODO(), pipeline)
@@ -281,5 +281,34 @@ func GetCareersApplyJob(companyID string) ([]bson.M, error) {
 	if err := cursor.All(context.TODO(), &result); err != nil {
 		return nil, err
 	}
+	return result, nil
+}
+
+func GetStatics(id primitive.ObjectID) (bson.M, error) {
+	result := bson.M{}
+
+	filter := bson.M{"isDeleted": false, "companyID": id}
+	pipeline := mongo.Pipeline{
+		{{"$match", filter}},
+		{{"$group", bson.D{
+			{"_id", "$careerID"},
+		}}},
+	}
+
+	cursor, _ := careerApplyJob.Aggregate(context.Background(), pipeline)
+	defer cursor.Close(context.Background())
+
+	totalCareer := 0
+	for cursor.Next(context.Background()) {
+		totalCareer++
+	}
+
+	totalResume, _ := careerApplyJob.CountDocuments(context.Background(), filter)
+	totalJob, _ := jobCollection.CountDocuments(context.Background(), filter)
+
+	result["totalCareer"] = totalCareer
+	result["totalResume"] = totalResume
+	result["totalJob"] = totalJob
+
 	return result, nil
 }
