@@ -24,8 +24,16 @@ func GetJob(w http.ResponseWriter, r *http.Request) {
 	jobTitle := r.URL.Query().Get("jobTitle")
 	jobCategory := r.URL.Query().Get("jobCategory")
 	companyName := r.URL.Query().Get("companyName")
+	workingLocation := r.URL.Query().Get("workingLocation")
 
-	jobs, err := service.GetJob(page, pageSize, jobTitle, jobCategory, companyName)
+	jobFilter := interfaces.IJobFilter{
+		JobTitle:        jobTitle,
+		WorkingLocation: workingLocation,
+		JobCategory:     jobCategory,
+		CompanyName:     companyName,
+	}
+
+	jobs, err := service.GetJob(page, pageSize, jobFilter)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return

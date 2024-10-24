@@ -17,7 +17,7 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
-func GetJob(page, pageSize int, jobTitle string, jobCategory string, companyName string) (models.PaginateDocs[models.Jobs], error) {
+func GetJob(page, pageSize int, jobFilter interfaces.IJobFilter) (models.PaginateDocs[models.Jobs], error) {
 
 	var jobs []models.Jobs
 	skip := (page - 1) * pageSize
@@ -29,28 +29,28 @@ func GetJob(page, pageSize int, jobTitle string, jobCategory string, companyName
 	filter := bson.M{
 		"isDeleted": false,
 	}
-	if jobTitle != "" {
+	if jobFilter.JobTitle != "" {
 		filter["jobTitle"] = bson.M{
-			"$regex": primitive.Regex{Pattern: jobTitle, Options: "i"},
+			"$regex": primitive.Regex{Pattern: jobFilter.JobTitle, Options: "i"},
 		}
 	}
-	// if workingLocation != "" {
-	// 	filter["workingLocation"] = bson.M{
-	// 		"$elemMatch": bson.M{
-	// 			"$regex": primitive.Regex{Pattern: workingLocation, Options: "i"},
-	// 		},
-	// 	}
-	// }
-
-	if jobCategory != "" {
-		filter["jobCategory"] = bson.M{
+	if jobFilter.WorkingLocation != "" {
+		filter["workingLocation"] = bson.M{
 			"$elemMatch": bson.M{
-				"$regex": primitive.Regex{Pattern: jobCategory, Options: "i"},
+				"$regex": primitive.Regex{Pattern: jobFilter.WorkingLocation, Options: "i"},
 			},
 		}
 	}
-	if companyName != "" {
-		companyID, err := GetCompanyIDByName(companyName)
+
+	if jobFilter.JobCategory != "" {
+		filter["jobCategory"] = bson.M{
+			"$elemMatch": bson.M{
+				"$regex": primitive.Regex{Pattern: jobFilter.JobCategory, Options: "i"},
+			},
+		}
+	}
+	if jobFilter.CompanyName != "" {
+		companyID, err := GetCompanyIDByName(jobFilter.CompanyName)
 		if err != nil {
 			return models.PaginateDocs[models.Jobs]{}, err
 		}
