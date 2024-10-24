@@ -287,3 +287,22 @@ func UploadCompanyIMG(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 	fmt.Fprintf(w, `{"url": "%s"}`, url)
 }
+
+func (h *Handler) RegisterForCompany(w http.ResponseWriter, r *http.Request) {
+	var company models.Company
+
+	if err := json.NewDecoder(r.Body).Decode(&company); err != nil {
+		http.Error(w, "Invalid request payload", http.StatusBadRequest)
+		return
+	}
+
+	err := h.AuthService.RegisterForCompany(company)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte(`{"message":"Company registered successfully"}`))
+}

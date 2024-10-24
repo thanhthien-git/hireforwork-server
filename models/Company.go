@@ -1,6 +1,8 @@
 package models
 
-import "go.mongodb.org/mongo-driver/bson/primitive"
+import (
+	"go.mongodb.org/mongo-driver/bson/primitive"
+)
 
 type CompanyImage struct {
 	ImageURL string `bson:"imageURL" json:"imageURL"`
@@ -28,4 +30,5 @@ type Company struct {
 	PostJob       []primitive.ObjectID `bson:"postJob" json:"postJob"`
 	CompanyField  []string             `bson:"companyField" json:"companyField"`
 	Password      string               `bson:"password" json:"password"`
+	EstablishDate string               `bson:"establishDate" json:"establishDate"`
 }
