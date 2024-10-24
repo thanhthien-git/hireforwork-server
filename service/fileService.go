@@ -71,7 +71,9 @@ func UploadFile(file multipart.File, header *multipart.FileHeader, folder string
 	if err != nil {
 		return "", fmt.Errorf("Error when retrieve object: ", err.Error())
 	}
-	return attrs.MediaLink, nil
+	publicURL := fmt.Sprintf("https://storage.googleapis.com/%s/%s", bucketName, attrs.Name)
+
+	return publicURL, nil
 }
 
 func UploadResume(file multipart.File, header *multipart.FileHeader, contentType string) (string, error) {

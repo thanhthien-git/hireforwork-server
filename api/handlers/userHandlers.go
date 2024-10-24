@@ -108,28 +108,38 @@ func CreateUser(w http.ResponseWriter, r *http.Request) {
 }
 
 func UploadImage(w http.ResponseWriter, r *http.Request) {
-	r.ParseMultipartForm(10 << 20)
+	if err := r.ParseMultipartForm(10 << 20); err != nil {
+		http.Error(w, "Unable to parse form", http.StatusBadRequest)
+		return
+	}
+	vars := mux.Vars(r)
 
 	file, header, err := r.FormFile("avatar")
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		http.Error(w, "Error retrieving the file", http.StatusBadRequest)
 		return
 	}
 	defer file.Close()
 
 	contentType := header.Header.Get("Content-Type")
 	if _, ok := imageAllowedType[contentType]; !ok {
-		http.Error(w, "Only JPEG, JPG, and PNG are allowed.", http.StatusBadRequest)
+		http.Error(w, "Chỉ được dùng JPEG, JPG, and PNG.", http.StatusBadRequest)
 		return
 	}
 
 	url, err := service.UploadImage(file, header, contentType)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		http.Error(w, "Lỗi khi upload hình ảnh", http.StatusInternalServerError)
 		return
 	}
-	w.WriteHeader(http.StatusOK)
+
+	if err := service.UpdateCareerImage(url, vars["id"]); err != nil {
+		http.Error(w, "Lỗi khi cập nhập hình ảnh", http.StatusInternalServerError)
+		return
+	}
+
 	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
 	fmt.Fprintf(w, `{"url": "%s"}`, url)
 }
 
@@ -329,31 +339,31 @@ func RemoveSaveJobHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func GetSavedJobs(w http.ResponseWriter, r *http.Request) {
-    vars := mux.Vars(r)
-    id := vars["id"]  
+	vars := mux.Vars(r)
+	id := vars["id"]
 
-    savedJobs, err := service.GetSavedJobByCareerID(id)
-    if err != nil {
-        http.Error(w, err.Error(), http.StatusInternalServerError)
-        return
-    }
+	savedJobs, err := service.GetSavedJobByCareerID(id)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
 
-    w.Header().Set("Content-Type", "application/json")
-    w.WriteHeader(http.StatusOK)
-    json.NewEncoder(w).Encode(savedJobs)
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(savedJobs)
 }
 
 func GetViewedJobs(w http.ResponseWriter, r *http.Request) {
-    vars := mux.Vars(r)
-    id := vars["id"] 
+	vars := mux.Vars(r)
+	id := vars["id"]
 
-    viewedJobs, err := service.GetViewedJobByCareerID(id) 
-    if err != nil {
-        http.Error(w, err.Error(), http.StatusInternalServerError)
-        return
-    }
+	viewedJobs, err := service.GetViewedJobByCareerID(id)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
 
-    w.Header().Set("Content-Type", "application/json")
-    w.WriteHeader(http.StatusOK)
-    json.NewEncoder(w).Encode(viewedJobs)
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(viewedJobs)
 }

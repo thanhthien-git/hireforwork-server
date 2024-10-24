@@ -202,18 +202,15 @@ func UpdateUserByID(userID string, updatedUser models.User) (models.User, error)
 		},
 	}
 
-	// Use UpdateOne to apply the update
 	result, err := userCollection.UpdateOne(context.Background(), filter, update)
 	if err != nil {
 		return models.User{}, fmt.Errorf("error updating user: %v", err)
 	}
 
-	// Check if any document was modified
 	if result.ModifiedCount == 0 {
 		return models.User{}, fmt.Errorf("no changes were made to the user with ID %s", userID)
 	}
 
-	// Return the updated user
 	return updatedUser, nil
 }
 func SaveJob(careerID string, jobID string) (models.CareerSaveJob, error) {
@@ -385,10 +382,8 @@ func GetViewedJobByCareerID(careerID string) ([]models.ViewedJob, error) {
 		return nil, fmt.Errorf("invalid career ID: %v", err)
 	}
 
-	// Tạo filter để tìm kiếm CareerViewedJob theo careerID
 	filter := bson.M{"careerID": careerObjID}
 
-	// Tìm kiếm document trong collection CareerViewedJob
 	var careerViewed models.CareerViewedJob
 	err = careerViewedJob.FindOne(context.Background(), filter).Decode(&careerViewed)
 	if err != nil {
@@ -398,6 +393,22 @@ func GetViewedJobByCareerID(careerID string) ([]models.ViewedJob, error) {
 		return nil, fmt.Errorf("error retrieving viewed jobs: %v", err)
 	}
 
-	// Trả về danh sách các công việc đã xem
 	return careerViewed.ViewedJob, nil
+}
+
+func UpdateCareerImage(link string, id string) error {
+	objID, _ := primitive.ObjectIDFromHex(id)
+	filter := bson.M{"_id": objID}
+	update := bson.M{
+		"$set": bson.M{
+			"careerPicture": link,
+		},
+	}
+	opt := options.FindOneAndUpdate().SetReturnDocument(options.After)
+
+	res := userCollection.FindOneAndUpdate(context.Background(), filter, update, opt)
+	if res.Err() != nil {
+		return res.Err()
+	}
+	return nil
 }
