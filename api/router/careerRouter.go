@@ -29,4 +29,6 @@ func setUpCareerRoutes(router *mux.Router, handler *handlers.Handler) {
 	router.HandleFunc("/careers/savejob", handlers.SaveJob).Methods("POST")
 	router.HandleFunc("/careers/viewedjob", handlers.CareerViewedJob).Methods("POST")
 	router.HandleFunc("/careers/{careerID}/saved-jobs/{jobID}", handlers.RemoveSaveJobHandler).Methods("DELETE")
+
+	router.HandleFunc("/careers/register", handler.RegisterCareer).Methods("POST")
 }

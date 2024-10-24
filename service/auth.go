@@ -144,3 +144,57 @@ func (a *AuthService) LoginForCompany(credential Credentials) (LoginResponse, er
 	return response, nil
 }
 
+func (a *AuthService) RegisterForCareer(user models.User) error {
+	var existingUser models.User
+	err := userCollection.FindOne(context.Background(), bson.D{
+		{"careerEmail", user.CareerEmail},
+	}).Decode(&existingUser)
+
+	if err == nil {
+		return errors.New("User with this email already exists")
+	}
+
+	hashedPassword := utils.EncodeToSHA(user.Password)
+	user.Password = hashedPassword
+
+	if user.Role == "" {
+		user.Role = "CAREER"
+	}
+
+	user.Id = primitive.NewObjectID()
+	user.CreateAt = primitive.NewDateTimeFromTime(time.Now())
+
+	_, err = userCollection.InsertOne(context.Background(), user)
+	if err != nil {
+		log.Printf("Error inserting user into MongoDB: %v", err)
+		return errors.New("Error creating user")
+	}
+
+	return nil
+}
+
+func (a *AuthService) RegisterForCompany(company models.Company) error {
+	var existingCompany models.Company
+
+	err := companyCollection.FindOne(context.Background(), bson.D{
+		{"companyEmail", company.Contact.CompanyEmail},
+	}).Decode(&existingCompany)
+
+	if err == nil {
+		return errors.New("Company with this email already exists")
+	}
+
+	hashedPassword := utils.EncodeToSHA(company.Password)
+	company.Password = hashedPassword
+
+	company.Id = primitive.NewObjectID()
+	company.CreateAt = primitive.NewDateTimeFromTime(time.Now())
+
+	_, err = companyCollection.InsertOne(context.Background(), company)
+	if err != nil {
+		log.Printf("Error inserting company into MongoDB: %v", err)
+		return errors.New("Error creating company")
+	}
+
+	return nil
+}

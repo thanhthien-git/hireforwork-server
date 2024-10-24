@@ -188,65 +188,64 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 
 		json.NewEncoder(w).Encode(response)
 	}
-} 
-
-func RegisterCareer(w http.ResponseWriter, r *http.Request) {
-    type RegisterRequest struct {
-        FirstName    string `json:"firstName"`
-        LastName     string `json:"lastName"`
-        CareerEmail  string `json:"careerEmail"`
-        CareerPhone  string `json:"careerPhone"`
-        Password     string `json:"password"`
-    }
-
-    var req RegisterRequest
-
-    if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-        http.Error(w, "Invalid input", http.StatusBadRequest)
-        return
-    }
-
-    existingUser, err := service.GetUserByEmail(req.CareerEmail)
-    if err == nil && existingUser.CareerEmail != "" {
-        http.Error(w, "Career email already exists", http.StatusConflict)
-        return
-    }
-
-    hashedPassword := utils.EncodeToSHA(req.Password)
-
-    newUser := models.User{
-        Id:            primitive.NewObjectID(),
-        CareerEmail:   req.CareerEmail,
-        Password:      hashedPassword,
-        CreateAt:      primitive.NewDateTimeFromTime(time.Now()),
-        IsDeleted:     false,
-        Role:          "Career",
-        FirstName:     req.FirstName,
-        LastName:      req.LastName,
-        CareerPhone:   req.CareerPhone,
-        CareerPicture: "",
-        Languages:     nil, 
-        Profile:       models.Profile{}, 
-    }
-
-    createdUser, err := service.CreateUser(newUser)
-    if err != nil {
-        if err.Error() == "duplicate_email" {
-            http.Error(w, "Career email already exists", http.StatusConflict)
-            return
-        }
-        http.Error(w, fmt.Sprintf("Error creating user: %v", err), http.StatusInternalServerError)
-        return
-    }
-
-    w.Header().Set("Content-Type", "application/json")
-    w.WriteHeader(http.StatusOK)
-    json.NewEncoder(w).Encode(map[string]string{
-        "message": "User registered successfully",
-        "_id":     createdUser.Id.Hex(),
-    })
 }
 
+func RegisterCareer(w http.ResponseWriter, r *http.Request) {
+	type RegisterRequest struct {
+		FirstName   string `json:"firstName"`
+		LastName    string `json:"lastName"`
+		CareerEmail string `json:"careerEmail"`
+		CareerPhone string `json:"careerPhone"`
+		Password    string `json:"password"`
+	}
+
+	var req RegisterRequest
+
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "Invalid input", http.StatusBadRequest)
+		return
+	}
+
+	existingUser, err := service.GetUserByEmail(req.CareerEmail)
+	if err == nil && existingUser.CareerEmail != "" {
+		http.Error(w, "Career email already exists", http.StatusConflict)
+		return
+	}
+
+	hashedPassword := utils.EncodeToSHA(req.Password)
+
+	newUser := models.User{
+		Id:            primitive.NewObjectID(),
+		CareerEmail:   req.CareerEmail,
+		Password:      hashedPassword,
+		CreateAt:      primitive.NewDateTimeFromTime(time.Now()),
+		IsDeleted:     false,
+		Role:          "Career",
+		FirstName:     req.FirstName,
+		LastName:      req.LastName,
+		CareerPhone:   req.CareerPhone,
+		CareerPicture: "",
+		Languages:     nil,
+		Profile:       models.Profile{},
+	}
+
+	createdUser, err := service.CreateUser(newUser)
+	if err != nil {
+		if err.Error() == "duplicate_email" {
+			http.Error(w, "Career email already exists", http.StatusConflict)
+			return
+		}
+		http.Error(w, fmt.Sprintf("Error creating user: %v", err), http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(map[string]string{
+		"message": "User registered successfully",
+		"_id":     createdUser.Id.Hex(),
+	})
+}
 
 // UpdateUser là handler để cập nhật user theo ID
 func UpdateUser(w http.ResponseWriter, r *http.Request) {
@@ -366,4 +365,25 @@ func GetViewedJobs(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(viewedJobs)
+
+}
+
+func (h *Handler) RegisterCareer(w http.ResponseWriter, r *http.Request) {
+	var user models.User
+
+	if err := json.NewDecoder(r.Body).Decode(&user); err != nil {
+		http.Error(w, "Invalid request payload", http.StatusBadRequest)
+		return
+	}
+
+	err := h.AuthService.RegisterForCareer(user)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte(`{"message":"Career registered successfully"}`))
+
 }
