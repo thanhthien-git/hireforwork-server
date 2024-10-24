@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"encoding/json"
+	"fmt"
 	"hireforwork-server/interfaces"
 	"hireforwork-server/models"
 	"hireforwork-server/service"
@@ -88,7 +89,7 @@ func UpdateCompanyByID(w http.ResponseWriter, r *http.Request) {
 
 	var updatedData models.Company
 	if err := json.NewDecoder(r.Body).Decode(&updatedData); err != nil {
-		http.Error(w, "Invalid request payload", http.StatusBadRequest)
+		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
@@ -213,4 +214,76 @@ func GetStatics(w http.ResponseWriter, r *http.Request) {
 	}
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(res)
+}
+
+func UploadCompanyCover(w http.ResponseWriter, r *http.Request) {
+	if err := r.ParseMultipartForm(10 << 20); err != nil {
+		http.Error(w, "Unable to parse form", http.StatusBadRequest)
+		return
+	}
+	vars := mux.Vars(r)
+
+	file, header, err := r.FormFile("avatar")
+	if err != nil {
+		http.Error(w, "Error retrieving the file", http.StatusBadRequest)
+		return
+	}
+	defer file.Close()
+
+	contentType := header.Header.Get("Content-Type")
+	if _, ok := imageAllowedType[contentType]; !ok {
+		http.Error(w, "Chỉ được dùng JPEG, JPG, and PNG.", http.StatusBadRequest)
+		return
+	}
+
+	url, err := service.UploadImage(file, header, contentType)
+	if err != nil {
+		http.Error(w, "Lỗi khi upload hình ảnh", http.StatusInternalServerError)
+		return
+	}
+
+	if err := service.UploadCompanyCover(url, vars["id"]); err != nil {
+		http.Error(w, "Lỗi khi cập nhập hình ảnh", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	fmt.Fprintf(w, `{"url": "%s"}`, url)
+}
+
+func UploadCompanyIMG(w http.ResponseWriter, r *http.Request) {
+	if err := r.ParseMultipartForm(10 << 20); err != nil {
+		http.Error(w, "Unable to parse form", http.StatusBadRequest)
+		return
+	}
+	vars := mux.Vars(r)
+
+	file, header, err := r.FormFile("avatar")
+	if err != nil {
+		http.Error(w, "Error retrieving the file", http.StatusBadRequest)
+		return
+	}
+	defer file.Close()
+
+	contentType := header.Header.Get("Content-Type")
+	if _, ok := imageAllowedType[contentType]; !ok {
+		http.Error(w, "Chỉ được dùng JPEG, JPG, and PNG.", http.StatusBadRequest)
+		return
+	}
+
+	url, err := service.UploadImage(file, header, contentType)
+	if err != nil {
+		http.Error(w, "Lỗi khi upload hình ảnh", http.StatusInternalServerError)
+		return
+	}
+
+	if err := service.UploadCompanyImage(url, vars["id"]); err != nil {
+		http.Error(w, "Lỗi khi cập nhập hình ảnh", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	fmt.Fprintf(w, `{"url": "%s"}`, url)
 }

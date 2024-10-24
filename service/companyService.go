@@ -126,14 +126,12 @@ func UpdateCompanyByID(companyID string, updatedCompany models.Company) (models.
 
 	update := bson.M{
 		"$set": bson.M{
-			"companyName":   updatedCompany.CompanyName,
-			"companyImage":  updatedCompany.CompanyImage,
-			"contact":       updatedCompany.Contact,
-			"description":   updatedCompany.Description,
-			"typeOfCompany": updatedCompany.TypeOfCompany,
+			"companyName":  updatedCompany.CompanyName,
+			"contact":      updatedCompany.Contact,
+			"employeeSize": updatedCompany.EmployeeSize,
+			"description":  updatedCompany.Description,
 		},
 	}
-
 	opts := options.FindOneAndUpdate().SetReturnDocument(options.After)
 
 	var updatedDoc models.Company
@@ -311,4 +309,36 @@ func GetStatics(id primitive.ObjectID) (bson.M, error) {
 	result["totalJob"] = totalJob
 
 	return result, nil
+}
+
+func UploadCompanyCover(link string, id string) error {
+	obj, _ := primitive.ObjectIDFromHex(id)
+	filter := bson.M{"_id": obj}
+	update := bson.M{
+		"$set": bson.M{
+			"companyImage.coverURL": link,
+		},
+	}
+	opt := options.FindOneAndUpdate().SetReturnDocument(options.After)
+	res := companyCollection.FindOneAndUpdate(context.Background(), filter, update, opt)
+	if res.Err() != nil {
+		return res.Err()
+	}
+	return nil
+}
+
+func UploadCompanyImage(link string, id string) error {
+	obj, _ := primitive.ObjectIDFromHex(id)
+	filter := bson.M{"_id": obj}
+	update := bson.M{
+		"$set": bson.M{
+			"companyImage.imageURL": link,
+		},
+	}
+	opt := options.FindOneAndUpdate().SetReturnDocument(options.After)
+	res := companyCollection.FindOneAndUpdate(context.Background(), filter, update, opt)
+	if res.Err() != nil {
+		return res.Err()
+	}
+	return nil
 }
