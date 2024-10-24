@@ -65,6 +65,34 @@ func CreateJob(job models.Jobs) (models.Jobs, error) {
 	return job, nil
 }
 
+func UpdateJob(job models.Jobs) (models.Jobs, error) {
+	filter := bson.M{"_id": job.Id}
+
+	update := bson.M{
+		"$set": bson.M{
+			"jobTitle":        job.JobTitle,
+			"jobSalaryMin":    job.JobSalaryMin,
+			"jobSalaryMax":    job.JobSalaryMax,
+			"jobRequirement":  job.JobRequirement,
+			"workingLocation": job.WorkingLocation,
+			"isHot":           job.IsHot,
+			"isClosed":        job.IsClosed,
+			"isDeleted":       job.IsDeleted,
+			"expireDate":      job.ExpireDate,
+			"jobCategory":     job.JobCategory,
+			"quantity":        job.Quantity,
+			"jobDescription":  job.JobDescription,
+			"jobLevel":        job.JobLevel,
+		},
+	}
+	opts := options.FindOneAndUpdate().SetReturnDocument(options.After)
+	err := jobCollection.FindOneAndUpdate(context.Background(), filter, update, opts).Decode(&job)
+	if err != nil {
+		fmt.Println(err)
+		return models.Jobs{}, fmt.Errorf("Có lỗi xảy ra khi cập nhập lại thông tin")
+	}
+	return job, nil
+}
 func CheckIsExistedJob(request interfaces.IUserJob, collection *mongo.Collection) bool {
 	filter := bson.D{
 		{"isDeleted", false},

@@ -21,4 +21,14 @@ func setUpCompanyRoutes(router *mux.Router, handler *handlers.Handler) {
 	jobProtected.HandleFunc("/{id}", handlers.DeleteCompanyByID).Methods("DELETE")
 	// router.HandleFunc("/companies/update/{id}", handlers.UpdateCompanyByID).Methods("PUT")
 	// router.HandleFunc("/companies/{companyId}/jobs/{jobId}", handlers.DeleteJobByID).Methods("DELETE")
+  
+	companies := router.PathPrefix("/companies").Subrouter()
+	companies.Use(middleware.JWTMiddleware(handler.AuthService))
+	companies.HandleFunc("", handlers.GetCompaniesHandler).Methods("GET")
+	companies.HandleFunc("/get-applier/{id}", handlers.GetCareerApply).Methods("GET")
+	companies.HandleFunc("/get-static/{id}", handlers.GetStatics).Methods("GET")
+	companies.HandleFunc("/{id}", handlers.DeleteCompanyByID).Methods("DELETE")
+	companies.HandleFunc("/{id}/update", handlers.UpdateCompanyByID).Methods("POST")
+	companies.HandleFunc("/{id}/upload-cover", handlers.UploadCompanyCover).Methods("POST")
+	companies.HandleFunc("/{id}/upload-img", handlers.UploadCompanyIMG).Methods("POST")
 }
