@@ -1,5 +1,5 @@
 .env
-
+.air.toml
 /firebaseconfig.json
 tmp
 .vercel

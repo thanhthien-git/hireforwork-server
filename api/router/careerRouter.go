@@ -20,11 +20,11 @@ func setUpCareerRoutes(router *mux.Router, handler *handlers.Handler) {
 	careerRouter.HandleFunc("/{id}", handlers.GetUserByID).Methods("GET")
 	careerRouter.HandleFunc("/{id}", handlers.DeleteUserByID).Methods("DELETE")
 	careerRouter.HandleFunc("/{id}", handlers.UpdateUser).Methods("PUT")
-
 	// Additional Routes
 	router.HandleFunc("/careers/savedjobs/{id}", handlers.GetSavedJobs).Methods("GET")
 	router.HandleFunc("/careers/viewedjobs/{id}", handlers.GetViewedJobs).Methods("GET")
 	router.HandleFunc("/careers/savejob", handlers.SaveJob).Methods("POST")
 	router.HandleFunc("/careers/viewedjob", handlers.CareerViewedJob).Methods("POST")
 	router.HandleFunc("/careers/{careerID}/saved-jobs/{jobID}", handlers.RemoveSaveJobHandler).Methods("DELETE")
+	router.HandleFunc("/apply-jobs/status/{applyJobID}", handler.ChangeStatus).Methods("PUT")
 }

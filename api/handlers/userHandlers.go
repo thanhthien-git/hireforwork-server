@@ -295,7 +295,6 @@ func GetViewedJobs(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) ChangePassword(w http.ResponseWriter, r *http.Request) {
 	params := mux.Vars(r)
 	id := params["id"]
-
 	var payload struct {
 		Username    string `json:"username"`
 		Password    string `json:"password"`
@@ -346,4 +345,39 @@ func (h *Handler) ChangePassword(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(responsePayload)
+}
+func (h *Handler) ChangeStatus(w http.ResponseWriter, r *http.Request) {
+	params := mux.Vars(r)
+	id := params["applyJobID"]
+
+	// Kiểm tra xem ID có tồn tại không
+	if id == "" {
+		http.Error(w, "ID is required", http.StatusBadRequest)
+		return
+	}
+
+	var payload struct {
+		NewStatus string `json:"newStatus"`
+	}
+
+	// Giải mã JSON từ request body
+	if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
+		http.Error(w, "Invalid request payload", http.StatusBadRequest)
+		return
+	}
+
+	// Gọi service để thay đổi trạng thái
+	updatedApplyJob, err := service.ChangeStatus(id, payload.NewStatus)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	// Trả về thông tin đối tượng sau khi cập nhật
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	if err := json.NewEncoder(w).Encode(updatedApplyJob); err != nil {
+		http.Error(w, "Failed to encode response", http.StatusInternalServerError)
+		return
+	}
 }

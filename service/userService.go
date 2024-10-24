@@ -361,3 +361,30 @@ func ChangePassword(userID string, oldPassword string, newPassword string) (mode
 	user.Password = hashedNewPassword
 	return user, nil
 }
+func ChangeStatus(applyJobID string, newStatus string) (models.CareerApplyJob, error) {
+	applyJobObjID, err := primitive.ObjectIDFromHex(applyJobID)
+	if err != nil {
+		return models.CareerApplyJob{}, errors.New("invalid apply job ID")
+	}
+
+	var applyJob models.CareerApplyJob
+	err = careerApplyJob.FindOne(context.Background(), bson.M{"_id": applyJobObjID, "isDeleted": false}).Decode(&applyJob)
+	if err != nil {
+		log.Println("Apply Job ID:", applyJobObjID)
+		log.Println("FindOne Error - Apply Job ID:", applyJobObjID, "Error:", err)
+		return models.CareerApplyJob{}, errors.New("apply job not found")
+	}
+	// Cập nhật trạng thái mới
+	_, err = careerApplyJob.UpdateOne(
+		context.Background(),
+		bson.M{"_id": applyJobObjID},
+		bson.M{"$set": bson.M{"status": newStatus}},
+	)
+	if err != nil {
+		return models.CareerApplyJob{}, errors.New("failed to update status")
+	}
+
+	// Cập nhật lại đối tượng `applyJob`
+	applyJob.Status = newStatus
+	return applyJob, nil
+}
