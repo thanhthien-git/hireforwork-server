@@ -19,6 +19,7 @@ func setUpCareerRoutes(router *mux.Router, handler *handlers.Handler) {
 	careerRouter.HandleFunc("", handlers.GetUser).Methods("GET")
 	careerRouter.HandleFunc("/{id}", handlers.GetUserByID).Methods("GET")
 	careerRouter.HandleFunc("/{id}", handlers.DeleteUserByID).Methods("DELETE")
+	router.HandleFunc("/careers/{id}/upload-image", handlers.UploadImage).Methods("POST")
 	careerRouter.HandleFunc("/{id}", handlers.UpdateUser).Methods("PUT")
 
 	// Additional Routes
