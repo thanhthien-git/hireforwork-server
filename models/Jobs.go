@@ -11,7 +11,7 @@ type UserInfo struct {
 }
 
 type Jobs struct {
-	Id              primitive.ObjectID `bson:"_id" json:"_id,omitempty"`
+	Id              primitive.ObjectID `bson:"_id" json:"_id omitempty"`
 	JobTitle        string             `bson:"jobTitle" json:"jobTitle" validate:"required"`
 	JobSalaryMin    int64              `bson:"jobSalaryMin" json:"jobSalaryMin"`
 	JobSalaryMax    int64              `bson:"jobSalaryMax" json:"jobSalaryMax"`
@@ -24,6 +24,7 @@ type Jobs struct {
 	ExpireDate      primitive.DateTime `bson:"expireDate" json:"expireDate"`
 	CompanyID       primitive.ObjectID `bson:"companyID" json:"companyID"`
 	JobCategory     []string           `bson:"jobCategory" json:"jobCategory"`
+	JobTech         []string           `bson:"jobTech" json:"jobTech"`
 	Quantity        int64              `bson:"quantity" json:"quantity"`
 	JobDescription  string             `bson:"jobDescription" json:"jobDescription"`
 	JobLevel        string             `bson:"jobLevel" json:"jobLevel"`
