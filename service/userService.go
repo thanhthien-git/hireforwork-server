@@ -265,7 +265,6 @@ func SaveJob(careerID string, jobID string) (models.CareerSaveJob, error) {
     return careerSave, nil
 }
 
-
 func CareerViewedJob(careerID string, jobID string) (models.CareerViewedJob, error) {
 	careerObjID, err := primitive.ObjectIDFromHex(careerID)
 	if err != nil {
@@ -277,14 +276,15 @@ func CareerViewedJob(careerID string, jobID string) (models.CareerViewedJob, err
 		return models.CareerViewedJob{}, fmt.Errorf("invalid job ID: %v", err)
 	}
 
+	// Tạo đối tượng ViewedJob
 	viewedJob := models.ViewedJob{
 		JobID: jobObjID,
 	}
 
-	// Kiểm tra cập nhật document
+	// Tìm kiếm và cập nhật document với CareerID
 	filter := bson.M{"careerID": careerObjID}
 	update := bson.M{
-		"$addToSet": bson.M{"viewedJob": viewedJob}, // Add to set to avoid duplicates
+		"$addToSet": bson.M{"viewedJob": viewedJob}, // Add to set để tránh trùng lặp
 	}
 
 	opts := options.Update().SetUpsert(true)
@@ -305,7 +305,6 @@ func CareerViewedJob(careerID string, jobID string) (models.CareerViewedJob, err
 	}
 
 	return careerViewed, nil
-
 }
 
 func RemoveSaveJob(careerID string, jobID string) (models.CareerSaveJob, error) {
@@ -394,6 +393,22 @@ func GetViewedJobByCareerID(careerID string) ([]models.ViewedJob, error) {
 	}
 
 	return careerViewed.ViewedJob, nil
+}
+
+func GetViewed(jobID string) (int64, error) {
+    jobObjID, err := primitive.ObjectIDFromHex(jobID)
+    if err != nil {
+        return 0, fmt.Errorf("invalid job ID: %v", err)
+    }
+
+    filter := bson.M{"viewedJob.jobID": jobObjID}
+
+    count, err := careerViewedJob.CountDocuments(context.Background(), filter)
+    if err != nil {
+        return 0, fmt.Errorf("error counting job views: %v", err)
+    }
+
+    return count, nil
 }
 
 func UpdateCareerImage(link string, id string) error {

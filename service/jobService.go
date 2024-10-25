@@ -187,3 +187,19 @@ func GetJobByID(jobID string) (models.Jobs, error) {
 	}
 	return job, nil
 }
+
+func GetViewedCount(jobID string) (int64, error) {
+    jobObjID, err := primitive.ObjectIDFromHex(jobID)
+    if err != nil {
+        return 0, fmt.Errorf("invalid job ID: %v", err)
+    }
+
+    filter := bson.M{"viewedJob": bson.M{"$elemMatch": bson.M{"jobID": jobObjID}}} 
+
+    count, err := careerViewedJob.CountDocuments(context.Background(), filter)
+    if err != nil {
+        return 0, fmt.Errorf("error counting job views: %v", err)
+    }
+
+    return count, nil
+}
