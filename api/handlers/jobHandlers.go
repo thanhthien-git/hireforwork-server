@@ -129,10 +129,6 @@ func GetJobByID(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-type JobIDRequest struct {
-    JobID string `json:"jobID"`
-}
-
 func GetViewedJobCountHandler(w http.ResponseWriter, r *http.Request) {
     vars := mux.Vars(r)
     jobID := vars["id"]

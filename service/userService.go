@@ -395,22 +395,6 @@ func GetViewedJobByCareerID(careerID string) ([]models.ViewedJob, error) {
 	return careerViewed.ViewedJob, nil
 }
 
-func GetViewed(jobID string) (int64, error) {
-    jobObjID, err := primitive.ObjectIDFromHex(jobID)
-    if err != nil {
-        return 0, fmt.Errorf("invalid job ID: %v", err)
-    }
-
-    filter := bson.M{"viewedJob.jobID": jobObjID}
-
-    count, err := careerViewedJob.CountDocuments(context.Background(), filter)
-    if err != nil {
-        return 0, fmt.Errorf("error counting job views: %v", err)
-    }
-
-    return count, nil
-}
-
 func UpdateCareerImage(link string, id string) error {
 	objID, _ := primitive.ObjectIDFromHex(id)
 	filter := bson.M{"_id": objID}
