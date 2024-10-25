@@ -303,20 +303,19 @@ func CareerViewedJob(w http.ResponseWriter, r *http.Request) {
 		JobID    string `json:"jobID"`
 	}
 
+	// Decode JSON payload từ request body
 	if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
 		http.Error(w, "Invalid request payload", http.StatusBadRequest)
 		return
 	}
-
-	// Debugging payload
-	fmt.Printf("Received CareerID: %s, JobID: %s\n", payload.CareerID, payload.JobID)
-
+	// Gọi service để lưu công việc đã xem
 	viewedJob, err := service.CareerViewedJob(payload.CareerID, payload.JobID)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
+	// Trả về kết quả thành công
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(viewedJob)

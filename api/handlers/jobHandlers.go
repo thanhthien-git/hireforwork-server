@@ -128,3 +128,27 @@ func GetJobByID(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 }
+
+type JobIDRequest struct {
+    JobID string `json:"jobID"`
+}
+
+func GetViewedJobCountHandler(w http.ResponseWriter, r *http.Request) {
+    vars := mux.Vars(r)
+    jobID := vars["id"]
+
+    if jobID == "" {
+        http.Error(w, "jobID is required", http.StatusBadRequest)
+        return
+    }
+
+    count, err := service.GetViewedCount(jobID)
+    if err != nil {
+        http.Error(w, err.Error(), http.StatusInternalServerError)
+        return
+    }
+
+    w.Header().Set("Content-Type", "application/json")
+    w.WriteHeader(http.StatusOK)
+    json.NewEncoder(w).Encode(map[string]int64{"viewCount": count})
+}
