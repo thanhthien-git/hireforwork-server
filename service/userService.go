@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"hireforwork-server/models"
 	"log"
@@ -395,6 +396,58 @@ func GetViewedJobByCareerID(careerID string) ([]models.ViewedJob, error) {
 
 	return careerViewed.ViewedJob, nil
 }
+func ChangePassword(userID string, oldPassword string, newPassword string) (models.User, error) {
+	userObjID, err := primitive.ObjectIDFromHex(userID)
+	if err != nil {
+		return models.User{}, errors.New("invalid user ID")
+	}
+
+	var user models.User
+	err = userCollection.FindOne(context.Background(), bson.M{"_id": userObjID, "isDeleted": false}).Decode(&user)
+	if err != nil {
+		return models.User{}, errors.New("user not found")
+	}
+
+	authService := &AuthService{}
+	if !authService.CheckPasswordHash(user.Password, oldPassword) {
+		return models.User{}, errors.New("old password is incorrect")
+	}
+
+	hashedNewPassword := utils.EncodeToSHA(newPassword)
+	_, err = userCollection.UpdateOne(context.Background(), bson.M{"_id": userObjID}, bson.M{"$set": bson.M{"password": hashedNewPassword}})
+	if err != nil {
+		return models.User{}, errors.New("failed to update password")
+	}
+
+	user.Password = hashedNewPassword
+	return user, nil
+}
+func ChangeStatus(applyJobID string, newStatus string) (models.CareerApplyJob, error) {
+	applyJobObjID, err := primitive.ObjectIDFromHex(applyJobID)
+	if err != nil {
+		return models.CareerApplyJob{}, errors.New("invalid apply job ID")
+	}
+
+	var applyJob models.CareerApplyJob
+	err = careerApplyJob.FindOne(context.Background(), bson.M{"_id": applyJobObjID, "isDeleted": false}).Decode(&applyJob)
+	if err != nil {
+		log.Println("Apply Job ID:", applyJobObjID)
+		log.Println("FindOne Error - Apply Job ID:", applyJobObjID, "Error:", err)
+		return models.CareerApplyJob{}, errors.New("apply job not found")
+	}
+	// Cập nhật trạng thái mới
+	_, err = careerApplyJob.UpdateOne(
+		context.Background(),
+		bson.M{"_id": applyJobObjID},
+		bson.M{"$set": bson.M{"status": newStatus}},
+	)
+	if err != nil {
+		return models.CareerApplyJob{}, errors.New("failed to update status")
+	}
+
+	// Cập nhật lại đối tượng `applyJob`
+	applyJob.Status = newStatus
+	return applyJob, nil
 
 func UpdateCareerImage(link string, id string) error {
 	objID, _ := primitive.ObjectIDFromHex(id)

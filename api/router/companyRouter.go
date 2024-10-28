@@ -12,6 +12,15 @@ func setUpCompanyRoutes(router *mux.Router, handler *handlers.Handler) {
 	router.HandleFunc("/companies/{id}", handlers.GetCompanyByID).Methods("GET")
 	router.HandleFunc("/companies/create", handlers.CreateCompany).Methods("POST")
 	router.HandleFunc("/companies/get-job/{id}", handlers.GetJobsByCompany).Methods("GET")
+	router.HandleFunc("/{id}/change-password-company", handler.ChangePasswordCompany).Methods("PUT")
+
+	jobProtected := router.PathPrefix("/companies").Subrouter()
+	jobProtected.Use(middleware.JWTMiddleware(handler.AuthService))
+	jobProtected.HandleFunc("", handlers.GetCompaniesHandler).Methods("GET")
+	router.HandleFunc("/companies/get-applier/{id}", handlers.GetCareerApply).Methods("GET")
+	jobProtected.HandleFunc("/{id}", handlers.DeleteCompanyByID).Methods("DELETE")
+	// router.HandleFunc("/companies/update/{id}", handlers.UpdateCompanyByID).Methods("PUT")
+	// router.HandleFunc("/companies/{companyId}/jobs/{jobId}", handlers.DeleteJobByID).Methods("DELETE")
   
 	companies := router.PathPrefix("/companies").Subrouter()
 	companies.Use(middleware.JWTMiddleware(handler.AuthService))

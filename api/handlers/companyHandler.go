@@ -202,7 +202,6 @@ func GetCareerApply(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 }
-
 func GetStatics(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	id := vars["id"]
