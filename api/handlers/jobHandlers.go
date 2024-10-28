@@ -108,31 +108,6 @@ func (h *JobHandler) GetSuggestJobs(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (h *JobHandler) GetFilteredJobs(w http.ResponseWriter, r *http.Request) {
-	createDateStr := r.URL.Query().Get("createAt")
-	expireDateStr := r.URL.Query().Get("expireDate")
-
-	createDate, err := time.Parse("2006-01-02", createDateStr)
-	if err != nil {
-		http.Error(w, "Invalid createAt date", http.StatusBadRequest)
-		return
-	}
-
-	expireDate, err := time.Parse("2006-01-02", expireDateStr)
-	if err != nil {
-		http.Error(w, "Invalid expireDate date", http.StatusBadRequest)
-		return
-	}
-
-	jobs, err := h.JobService.GetFilteredJobs(r.Context(), createDate, expireDate)
-	if err != nil {
-		http.Error(w, "Error fetching jobs", http.StatusInternalServerError)
-		return
-	}
-
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(jobs)
-}
 func GetJobByID(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 
