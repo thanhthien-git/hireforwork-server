@@ -1,4 +1,3 @@
-
 package api
 
 import (
@@ -21,5 +20,7 @@ func SetUpRouter() *mux.Router {
 	setUpCareerRoutes(router, handler)
 	setUpCompanyRoutes(router, handler)
 	setUpJobRouter(router, handler)
+	setUpTechRouter(router, handler)
+	setUpFieldRouter(router, handler)
 	return router
 }
