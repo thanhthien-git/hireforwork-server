@@ -41,8 +41,6 @@ func GetUser(w http.ResponseWriter, r *http.Request) {
 	careerEmail := r.URL.Query().Get("careerEmail")
 	careerPhone := r.URL.Query().Get("careerPhone")
 
-	fmt.Printf(lastName)
-
 	users, err := service.GetUser(page, pageSize, careerFirstName, lastName, careerEmail, careerPhone)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)

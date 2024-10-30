@@ -88,15 +88,10 @@ func ApplyJob(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-type JobHandler struct {
-	JobService *service.JobService
-}
-
-func (h *JobHandler) GetSuggestJobs(w http.ResponseWriter, r *http.Request) {
-	jobs, err := h.JobService.GetLatestJobs()
+func GetSuggestJobs(w http.ResponseWriter, r *http.Request) {
+	jobs, err := service.GetLatestJobs()
 	if err != nil {
-		http.Error(w, "Error fetching jobs", http.StatusInternalServerError)
-		log.Printf("Error fetching jobs: %v", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
@@ -104,7 +99,9 @@ func (h *JobHandler) GetSuggestJobs(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 	if err := json.NewEncoder(w).Encode(jobs); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
 	}
+
 }
 
 func GetJobByID(w http.ResponseWriter, r *http.Request) {

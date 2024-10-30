@@ -130,6 +130,7 @@ func UpdateCompanyByID(companyID string, updatedCompany models.Company) (models.
 			"contact":      updatedCompany.Contact,
 			"employeeSize": updatedCompany.EmployeeSize,
 			"description":  updatedCompany.Description,
+			"companyField": updatedCompany.CompanyField,
 		},
 	}
 	opts := options.FindOneAndUpdate().SetReturnDocument(options.After)
