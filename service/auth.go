@@ -143,3 +143,4 @@ func (a *AuthService) LoginForCompany(credential Credentials) (LoginResponse, er
 	}
 	return response, nil
 }
+

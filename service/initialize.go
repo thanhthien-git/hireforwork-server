@@ -8,7 +8,7 @@ import (
 	"go.mongodb.org/mongo-driver/mongo"
 )
 
-var collection, jobCollection, companyCollection, careerSaveJob, careerViewedJob, careerApplyJob *mongo.Collection
+var collection, jobCollection, companyCollection, careerSaveJob, careerViewedJob, careerApplyJob, techCollection, companyFieldCollection *mongo.Collection
 
 func init() {
 	client, ctx, err := dbHelper.ConnectDB()
@@ -21,10 +21,13 @@ func init() {
 
 	companyCollection = dbHelper.GetCollection(ctx, os.Getenv("COLLECTION_COMPANY"), client)
 
-	careerSaveJob = dbHelper.GetCollection(ctx, os.Getenv("COLLECTION_CAREERSAVEJOB"), client)
+	careerSaveJob = dbHelper.GetCollection(ctx, os.Getenv("COLLECTION_CAREER_SAVEDJOB"), client)
 
-	careerViewedJob = dbHelper.GetCollection(ctx, os.Getenv("COLLECTION_CAREERVIEWEDJOB"), client)
+	careerViewedJob = dbHelper.GetCollection(ctx, os.Getenv("COLLECTION_CAREER_VIEWEDJOB"), client)
 
 	careerApplyJob = dbHelper.GetCollection(ctx, os.Getenv("COLLECTION_CAREER_APPLYJOB"), client)
 
+	techCollection = dbHelper.GetCollection(ctx, os.Getenv("COLLECTION_TECHNOLOGIES"), client)
+
+	companyFieldCollection = dbHelper.GetCollection(ctx, os.Getenv("COLLECTION_COMPANY_FIELD"), client)
 }

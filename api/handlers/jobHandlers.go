@@ -51,6 +51,24 @@ func CreateJobHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func UpdateJobHandler(w http.ResponseWriter, r *http.Request) {
+	var job models.Jobs
+	err := json.NewDecoder(r.Body).Decode(&job)
+	updateJob, err := service.UpdateJob(job)
+	fmt.Println(updateJob)
+	if err != nil {
+		http.Error(w, fmt.Sprintln("Có lỗi xảy ra khi cập nhập!"), http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusCreated)
+	err = json.NewEncoder(w).Encode(updateJob)
+	if err != nil {
+		http.Error(w, "Có gì đó không ổn", http.StatusInternalServerError)
+	}
+}
+
 func ApplyJob(w http.ResponseWriter, r *http.Request) {
 
 	request := interfaces.IJobApply{}
@@ -70,15 +88,10 @@ func ApplyJob(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-type JobHandler struct {
-	JobService *service.JobService
-}
-
-func (h *JobHandler) GetSuggestJobs(w http.ResponseWriter, r *http.Request) {
-	jobs, err := h.JobService.GetLatestJobs()
+func GetSuggestJobs(w http.ResponseWriter, r *http.Request) {
+	jobs, err := service.GetLatestJobs()
 	if err != nil {
-		http.Error(w, "Error fetching jobs", http.StatusInternalServerError)
-		log.Printf("Error fetching jobs: %v", err) // Ghi lại lỗi chi tiết
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
@@ -86,7 +99,9 @@ func (h *JobHandler) GetSuggestJobs(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 	if err := json.NewEncoder(w).Encode(jobs); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
 	}
+
 }
 
 func GetJobByID(w http.ResponseWriter, r *http.Request) {
@@ -110,4 +125,3 @@ func GetJobByID(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 }
-

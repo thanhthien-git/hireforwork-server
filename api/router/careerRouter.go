@@ -10,6 +10,7 @@ import (
 func setUpCareerRoutes(router *mux.Router, handler *handlers.Handler) {
 	// Public Routes
 	router.HandleFunc("/careers/auth/login", handler.Login).Methods("POST")
+	router.HandleFunc("/careers/register", handlers.RegisterCareer).Methods("POST")
 	router.HandleFunc("/careers/create", handlers.CreateUser).Methods("POST")
 
 	// Protected Routes (with JWT middleware)
@@ -19,6 +20,7 @@ func setUpCareerRoutes(router *mux.Router, handler *handlers.Handler) {
 	careerRouter.HandleFunc("", handlers.GetUser).Methods("GET")
 	careerRouter.HandleFunc("/{id}", handlers.GetUserByID).Methods("GET")
 	careerRouter.HandleFunc("/{id}", handlers.DeleteUserByID).Methods("DELETE")
+	router.HandleFunc("/careers/{id}/upload-image", handlers.UploadImage).Methods("POST")
 	careerRouter.HandleFunc("/{id}", handlers.UpdateUser).Methods("PUT")
 
 	// Additional Routes

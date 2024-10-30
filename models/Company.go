@@ -26,6 +26,6 @@ type Company struct {
 	IsDeleted     bool                 `bson:"isDeleted" json:"isDeleted"`
 	Popularity    int                  `bson:"popularity" json:"popularity"`
 	PostJob       []primitive.ObjectID `bson:"postJob" json:"postJob"`
-	TypeOfCompany []string             `bson:"typeOfCompany" json:"typeOfCompany"`
+	CompanyField  []string             `bson:"companyField" json:"companyField"`
 	Password      string               `bson:"password" json:"password"`
 }

@@ -65,6 +65,34 @@ func CreateJob(job models.Jobs) (models.Jobs, error) {
 	return job, nil
 }
 
+func UpdateJob(job models.Jobs) (models.Jobs, error) {
+	filter := bson.M{"_id": job.Id}
+
+	update := bson.M{
+		"$set": bson.M{
+			"jobTitle":        job.JobTitle,
+			"jobSalaryMin":    job.JobSalaryMin,
+			"jobSalaryMax":    job.JobSalaryMax,
+			"jobRequirement":  job.JobRequirement,
+			"workingLocation": job.WorkingLocation,
+			"isHot":           job.IsHot,
+			"isClosed":        job.IsClosed,
+			"isDeleted":       job.IsDeleted,
+			"expireDate":      job.ExpireDate,
+			"jobCategory":     job.JobCategory,
+			"quantity":        job.Quantity,
+			"jobDescription":  job.JobDescription,
+			"jobLevel":        job.JobLevel,
+		},
+	}
+	opts := options.FindOneAndUpdate().SetReturnDocument(options.After)
+	err := jobCollection.FindOneAndUpdate(context.Background(), filter, update, opts).Decode(&job)
+	if err != nil {
+		fmt.Println(err)
+		return models.Jobs{}, fmt.Errorf("Có lỗi xảy ra khi cập nhập lại thông tin")
+	}
+	return job, nil
+}
 func CheckIsExistedJob(request interfaces.IUserJob, collection *mongo.Collection) bool {
 	filter := bson.D{
 		{"isDeleted", false},
@@ -112,31 +140,19 @@ func ApplyForJob(request interfaces.IJobApply) (models.Jobs, error) {
 	return job, nil
 }
 
-type JobService struct {
-	Collection *mongo.Collection
-}
+func GetLatestJobs() ([]models.Jobs, error) {
+	var jobs []models.Jobs
 
-func NewJobService(db *mongo.Database) *JobService {
-	return &JobService{
-		Collection: db.Collection("Job"),
-	}
-}
-
-func (s *JobService) GetLatestJobs() ([]models.Jobs, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
-
-	filter := bson.M{"isDeleted": false, "isClosed": false}
+	filter := bson.M{"isDeleted": false}
 	opts := options.Find().SetSort(bson.D{{"createAt", -1}}).SetLimit(10)
 
-	cursor, err := s.Collection.Find(ctx, filter, opts)
+	cursor, err := jobCollection.Find(context.Background(), filter, opts)
 	if err != nil {
 		return nil, err
 	}
-	defer cursor.Close(ctx)
+	defer cursor.Close(context.Background())
 
-	var jobs []models.Jobs
-	if err := cursor.All(ctx, &jobs); err != nil {
+	if err := cursor.All(context.Background(), &jobs); err != nil {
 		return nil, err
 	}
 
@@ -159,4 +175,3 @@ func GetJobByID(jobID string) (models.Jobs, error) {
 	}
 	return job, nil
 }
-
