@@ -16,12 +16,13 @@ func setUpCareerRoutes(router *mux.Router, handler *handlers.Handler) {
 	// Protected Routes (with JWT middleware)
 	careerRouter := router.PathPrefix("/careers").Subrouter()
 	careerRouter.Use(middleware.JWTMiddleware(handler.AuthService))
-
 	careerRouter.HandleFunc("", handlers.GetUser).Methods("GET")
 	careerRouter.HandleFunc("/{id}", handlers.GetUserByID).Methods("GET")
 	careerRouter.HandleFunc("/{id}", handlers.DeleteUserByID).Methods("DELETE")
-	router.HandleFunc("/careers/{id}/upload-image", handlers.UploadImage).Methods("POST")
-	careerRouter.HandleFunc("/{id}", handlers.UpdateUser).Methods("PUT")
+	careerRouter.HandleFunc("/{id}/upload-image", handlers.UploadImage).Methods("POST")
+	careerRouter.HandleFunc("/{id}/upload-resume", handlers.UploadResume).Methods("POST")
+	careerRouter.HandleFunc("/{id}/remove-resume", handlers.RemoveResume).Methods("POST")
+	careerRouter.HandleFunc("/{id}/update", handlers.UpdateUser).Methods("POST")
 
 	// Additional Routes
 	router.HandleFunc("/careers/savedjobs/{id}", handlers.GetSavedJobs).Methods("GET")

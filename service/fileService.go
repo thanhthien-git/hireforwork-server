@@ -87,7 +87,7 @@ func CreateFileName(path string, header *multipart.FileHeader) string {
 	ext := strings.ToLower(filepath.Ext(header.Filename))
 
 	switch ext {
-	case ".png", ".jpeg", ".jpg", ".docx":
+	case ".png", ".jpeg", ".jpg", ".docx", ".pdf":
 		return path + uuid.New().String() + ext
 	default:
 		return ""

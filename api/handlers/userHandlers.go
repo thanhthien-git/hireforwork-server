@@ -8,7 +8,6 @@ import (
 	"hireforwork-server/service"
 	"hireforwork-server/utils"
 	"io/ioutil"
-	"log"
 	"net/http"
 	"strconv"
 	"time"
@@ -150,6 +149,7 @@ func UploadResume(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	defer file.Close()
+	vars := mux.Vars(r)
 
 	contentType := header.Header.Get("Content-Type")
 	if _, ok := resumeAllowFile[contentType]; !ok {
@@ -160,6 +160,10 @@ func UploadResume(w http.ResponseWriter, r *http.Request) {
 	url, err := service.UploadResume(file, header, contentType)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	if err := service.UpdateCareerResume(url, vars["id"]); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 	w.WriteHeader(http.StatusOK)
@@ -245,28 +249,22 @@ func RegisterCareer(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// UpdateUser là handler để cập nhật user theo ID
 func UpdateUser(w http.ResponseWriter, r *http.Request) {
-	// Lấy ID từ URL
 	params := mux.Vars(r)
 	id := params["id"]
 
-	log.Printf("User ID: %s", id) // Log ID để kiểm tra
-	// Giải mã JSON từ request body thành models.User
 	var user models.User
 	if err := json.NewDecoder(r.Body).Decode(&user); err != nil {
 		http.Error(w, "Invalid input", http.StatusBadRequest)
 		return
 	}
 
-	// Gọi service để cập nhật user
 	updatedUser, err := service.UpdateUserByID(id, user)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	// Trả về user đã cập nhật dưới dạng JSON
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(updatedUser)
@@ -363,4 +361,21 @@ func GetViewedJobs(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(viewedJobs)
+}
+
+func RemoveResume(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	id := vars["id"]
+	var data map[string]interface{}
+	json.NewDecoder(r.Body).Decode(&data)
+
+	resumeURL := data["resumeURL"].(string)
+	err := service.RemoveResume(id, resumeURL)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
 }

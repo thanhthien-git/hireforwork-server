@@ -177,28 +177,28 @@ func CreateUser(user models.User) (models.User, error) {
 	return user, nil
 }
 func UpdateUserByID(userID string, updatedUser models.User) (models.User, error) {
-	// Convert userID from string to ObjectID
 	_id, err := primitive.ObjectIDFromHex(userID)
 	if err != nil {
 		return models.User{}, fmt.Errorf("invalid user ID format: %v", err)
 	}
 
-	// Create filter to find the user by ID
 	filter := bson.M{"_id": _id, "isDeleted": false}
 
-	// Fetch the existing user to compare values
 	var existingUser models.User
 	err = userCollection.FindOne(context.Background(), filter).Decode(&existingUser)
 	if err != nil {
 		return models.User{}, fmt.Errorf("no user found with ID %s: %v", userID, err)
 	}
 
-	// Create update document to specify fields to update
 	update := bson.M{
 		"$set": bson.M{
 			"careerFirstName": updatedUser.FirstName,
 			"lastName":        updatedUser.LastName,
 			"careerEmail":     updatedUser.CareerEmail,
+			"careerPhone":     updatedUser.CareerPhone,
+			"careerPicture":   updatedUser.CareerPicture,
+			"profile":         updatedUser.Profile,
+			"languages":       updatedUser.Languages,
 		},
 	}
 
@@ -214,57 +214,56 @@ func UpdateUserByID(userID string, updatedUser models.User) (models.User, error)
 	return updatedUser, nil
 }
 func SaveJob(careerID string, jobID string) (models.CareerSaveJob, error) {
-    careerObjID, err := primitive.ObjectIDFromHex(careerID)
-    if err != nil {
-        return models.CareerSaveJob{}, err
-    }
+	careerObjID, err := primitive.ObjectIDFromHex(careerID)
+	if err != nil {
+		return models.CareerSaveJob{}, err
+	}
 
-    jobObjID, err := primitive.ObjectIDFromHex(jobID)
-    if err != nil {
-        return models.CareerSaveJob{}, err
-    }
+	jobObjID, err := primitive.ObjectIDFromHex(jobID)
+	if err != nil {
+		return models.CareerSaveJob{}, err
+	}
 
-    filter := bson.M{
-        "careerID": careerObjID,
-        "saveJob.jobID": jobObjID, 
-    }
+	filter := bson.M{
+		"careerID":      careerObjID,
+		"saveJob.jobID": jobObjID,
+	}
 
-    update := bson.M{
-        "$set": bson.M{"saveJob.$.isDeleted": false},
-    }
+	update := bson.M{
+		"$set": bson.M{"saveJob.$.isDeleted": false},
+	}
 
-    result, err := careerSaveJob.UpdateOne(context.Background(), filter, update)
-    if err != nil {
-        return models.CareerSaveJob{}, err
-    }
+	result, err := careerSaveJob.UpdateOne(context.Background(), filter, update)
+	if err != nil {
+		return models.CareerSaveJob{}, err
+	}
 
-    if result.MatchedCount == 0 {
+	if result.MatchedCount == 0 {
 		savedJob := models.SavedJob{
-            JobID:     jobObjID,
-            IsDeleted: false,
-        }
+			JobID:     jobObjID,
+			IsDeleted: false,
+		}
 
-        filter = bson.M{"careerID": careerObjID}
-        update = bson.M{
-            "$addToSet": bson.M{"saveJob": savedJob},  
-        }
+		filter = bson.M{"careerID": careerObjID}
+		update = bson.M{
+			"$addToSet": bson.M{"saveJob": savedJob},
+		}
 
-        opts := options.Update().SetUpsert(true) 
-        _, err = careerSaveJob.UpdateOne(context.Background(), filter, update, opts)
-        if err != nil {
-            return models.CareerSaveJob{}, err
-        }
-    }
+		opts := options.Update().SetUpsert(true)
+		_, err = careerSaveJob.UpdateOne(context.Background(), filter, update, opts)
+		if err != nil {
+			return models.CareerSaveJob{}, err
+		}
+	}
 
-    var careerSave models.CareerSaveJob
-    err = careerSaveJob.FindOne(context.Background(), bson.M{"careerID": careerObjID}).Decode(&careerSave)
-    if err != nil {
-        return models.CareerSaveJob{}, err
-    }
+	var careerSave models.CareerSaveJob
+	err = careerSaveJob.FindOne(context.Background(), bson.M{"careerID": careerObjID}).Decode(&careerSave)
+	if err != nil {
+		return models.CareerSaveJob{}, err
+	}
 
-    return careerSave, nil
+	return careerSave, nil
 }
-
 
 func CareerViewedJob(careerID string, jobID string) (models.CareerViewedJob, error) {
 	careerObjID, err := primitive.ObjectIDFromHex(careerID)
@@ -345,36 +344,35 @@ func RemoveSaveJob(careerID string, jobID string) (models.CareerSaveJob, error) 
 }
 
 func GetSavedJobByCareerID(careerID string) ([]models.SavedJob, error) {
-    careerObjID, err := primitive.ObjectIDFromHex(careerID)
-    if err != nil {
-        return nil, fmt.Errorf("invalid career ID: %v", err)
-    }
+	careerObjID, err := primitive.ObjectIDFromHex(careerID)
+	if err != nil {
+		return nil, fmt.Errorf("invalid career ID: %v", err)
+	}
 
-    // Tạo filter để tìm kiếm CareerSaveJob theo careerID
-    filter := bson.M{"careerID": careerObjID}
+	// Tạo filter để tìm kiếm CareerSaveJob theo careerID
+	filter := bson.M{"careerID": careerObjID}
 
-    // Tìm kiếm document trong collection CareerSaveJob
-    var careerSave models.CareerSaveJob
-    err = careerSaveJob.FindOne(context.Background(), filter).Decode(&careerSave)
-    if err != nil {
-        if err == mongo.ErrNoDocuments {
-            return nil, fmt.Errorf("no saved jobs found for career ID: %s", careerID)
-        }
-        return nil, fmt.Errorf("error retrieving saved jobs: %v", err)
-    }
+	// Tìm kiếm document trong collection CareerSaveJob
+	var careerSave models.CareerSaveJob
+	err = careerSaveJob.FindOne(context.Background(), filter).Decode(&careerSave)
+	if err != nil {
+		if err == mongo.ErrNoDocuments {
+			return nil, fmt.Errorf("no saved jobs found for career ID: %s", careerID)
+		}
+		return nil, fmt.Errorf("error retrieving saved jobs: %v", err)
+	}
 
-    // Lọc các công việc có isDeleted là false
-    var activeSavedJobs []models.SavedJob
-    for _, job := range careerSave.SaveJob {
-        if !job.IsDeleted {
-            activeSavedJobs = append(activeSavedJobs, job)
-        }
-    }
+	// Lọc các công việc có isDeleted là false
+	var activeSavedJobs []models.SavedJob
+	for _, job := range careerSave.SaveJob {
+		if !job.IsDeleted {
+			activeSavedJobs = append(activeSavedJobs, job)
+		}
+	}
 
-    // Trả về danh sách các công việc đã lưu mà không bị xóa
-    return activeSavedJobs, nil
+	// Trả về danh sách các công việc đã lưu mà không bị xóa
+	return activeSavedJobs, nil
 }
-
 
 func GetViewedJobByCareerID(careerID string) ([]models.ViewedJob, error) {
 	careerObjID, err := primitive.ObjectIDFromHex(careerID)
@@ -406,6 +404,39 @@ func UpdateCareerImage(link string, id string) error {
 	}
 	opt := options.FindOneAndUpdate().SetReturnDocument(options.After)
 
+	res := userCollection.FindOneAndUpdate(context.Background(), filter, update, opt)
+	if res.Err() != nil {
+		return res.Err()
+	}
+	return nil
+}
+
+func UpdateCareerResume(link string, id string) error {
+	objID, _ := primitive.ObjectIDFromHex(id)
+	filter := bson.M{"_id": objID}
+	update := bson.M{
+		"$push": bson.M{
+			"profile.userCV": link,
+		},
+	}
+	opt := options.FindOneAndUpdate().SetReturnDocument(options.After)
+
+	res := userCollection.FindOneAndUpdate(context.Background(), filter, update, opt)
+	if res.Err() != nil {
+		return res.Err()
+	}
+	return nil
+}
+
+func RemoveResume(id string, link string) error {
+	objID, _ := primitive.ObjectIDFromHex(id)
+	filter := bson.M{"_id": objID}
+	update := bson.M{
+		"$pull": bson.M{
+			"profile.userCV": link,
+		},
+	}
+	opt := options.FindOneAndUpdate().SetReturnDocument(options.After)
 	res := userCollection.FindOneAndUpdate(context.Background(), filter, update, opt)
 	if res.Err() != nil {
 		return res.Err()
