@@ -1,5 +1,10 @@
 package constants
 
+import (
+	"fmt"
+	"net/http"
+)
+
 const (
 	PENDING  = "PENDING"
 	ACCEPTED = "ACCEPTED"
@@ -68,3 +73,7 @@ const (
 	</html>
 	`
 )
+
+func Handler(w http.ResponseWriter, r *http.Request) {
+	fmt.Fprintf(w, "<h1>Hello from Go!</h1>")
+}
