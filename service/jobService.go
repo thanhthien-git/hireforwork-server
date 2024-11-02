@@ -242,6 +242,8 @@ func GetJobByID(jobID string, tokenString string) (bson.M, error) {
 		},
 		{
 			{"$addFields", bson.D{
+				{"contact", "$company.contact"},
+				{"companyName", "$company.companyName"},
 				{"companyImage", "$company.companyImage"},
 				{"employeeSize", "$company.employeeSize"},
 			}},
