@@ -30,4 +30,6 @@ func setUpCareerRoutes(router *mux.Router, handler *handlers.Handler) {
 	router.HandleFunc("/careers/savejob", handlers.SaveJob).Methods("POST")
 	router.HandleFunc("/careers/viewedjob", handlers.CareerViewedJob).Methods("POST")
 	router.HandleFunc("/careers/{careerID}/saved-jobs/{jobID}", handlers.RemoveSaveJobHandler).Methods("DELETE")
+	router.HandleFunc("/request-password-reset", handlers.RequestPasswordResetHandler).Methods("POST")
+	router.HandleFunc("/reset-password", handlers.ResetPasswordHandler).Methods("POST")
 }

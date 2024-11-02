@@ -217,18 +217,19 @@ func RegisterCareer(w http.ResponseWriter, r *http.Request) {
 	hashedPassword := utils.EncodeToSHA(req.Password)
 
 	newUser := models.User{
-		Id:            primitive.NewObjectID(),
-		CareerEmail:   req.CareerEmail,
-		Password:      hashedPassword,
-		CreateAt:      primitive.NewDateTimeFromTime(time.Now()),
-		IsDeleted:     false,
-		Role:          "Career",
-		FirstName:     req.FirstName,
-		LastName:      req.LastName,
-		CareerPhone:   req.CareerPhone,
-		CareerPicture: "",
-		Languages:     nil,
-		Profile:       models.Profile{},
+		Id:               primitive.NewObjectID(),
+		CareerEmail:      req.CareerEmail,
+		Password:         hashedPassword,
+		CreateAt:         primitive.NewDateTimeFromTime(time.Now()),
+		IsDeleted:        false,
+		Role:             "Career",
+		FirstName:        req.FirstName,
+		LastName:         req.LastName,
+		CareerPhone:      req.CareerPhone,
+		CareerPicture:    "",
+		Languages:        nil,
+		Profile:          models.Profile{},
+		VerificationCode: "",
 	}
 
 	createdUser, err := service.CreateUser(newUser)
@@ -378,4 +379,34 @@ func RemoveResume(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
+}
+func RequestPasswordResetHandler(w http.ResponseWriter, r *http.Request) {
+	var req interfaces.PasswordResetRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "Invalid request", http.StatusBadRequest)
+		return
+	}
+
+	code, err := service.RequestPasswordReset(req.Email)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	json.NewEncoder(w).Encode(map[string]string{"code": code})
+}
+
+func ResetPasswordHandler(w http.ResponseWriter, r *http.Request) {
+	var req interfaces.PasswordReset
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "Invalid request", http.StatusBadRequest)
+		return
+	}
+
+	if err := service.ResetPassword(req.Email, req.Code, req.NewPassword); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	w.WriteHeader(http.StatusNoContent)
 }
