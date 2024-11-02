@@ -4,9 +4,12 @@ import (
 	"context"
 	"fmt"
 	"hireforwork-server/models"
+	"hireforwork-server/utils"
 	"log"
 	"math"
+	"math/rand"
 	"net/http"
+	"time"
 
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
@@ -411,5 +414,44 @@ func RemoveResume(id string, link string) error {
 	if res.Err() != nil {
 		return res.Err()
 	}
+	return nil
+}
+func RequestPasswordReset(email string) (string, error) {
+	var user models.User
+	err := userCollection.FindOne(context.Background(), bson.M{"careerEmail": email}).Decode(&user)
+	if err != nil {
+		return "", fmt.Errorf("no user found with email %s: %v", email, err)
+	}
+
+	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
+	code := rng.Intn(9000) + 1000
+	user.VerificationCode = fmt.Sprintf("%d", code)
+	// fmt.Println("Mã xác nhận:", user.VerificationCode)
+	subject := "Mã xác nhận khôi phục mật khẩu"
+	body := fmt.Sprintf("Mã xác nhận của bạn là: %s", user.VerificationCode)
+	if err := SendEmail(email, subject, body); err != nil {
+		return "", err
+	}
+	_, err = userCollection.UpdateOne(context.Background(), bson.M{"_id": user.Id}, bson.M{"$set": bson.M{"verificationCode": user.VerificationCode}})
+	if err != nil {
+		return "", fmt.Errorf("Lỗi khi update mã xác nhận: %v", err)
+	}
+
+	return user.VerificationCode, nil
+}
+
+func ResetPassword(email string, code string, newPassword string) error {
+	var user models.User
+	err := userCollection.FindOne(context.Background(), bson.M{"careerEmail": email, "verificationCode": code}).Decode(&user)
+	if err != nil {
+		return fmt.Errorf("Sai mã xác nhận: %v", err)
+	}
+	hashedPassword := utils.EncodeToSHA(newPassword)
+
+	_, err = userCollection.UpdateOne(context.Background(), bson.M{"_id": user.Id}, bson.M{"$set": bson.M{"password": hashedPassword, "verificationCode": ""}})
+	if err != nil {
+		return fmt.Errorf("Lỗi khi cố lấy lại mật khẩu: %v", err)
+	}
+
 	return nil
 }

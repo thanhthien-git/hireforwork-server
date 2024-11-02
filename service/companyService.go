@@ -3,10 +3,12 @@ package service
 import (
 	"context"
 	"errors"
+	"hireforwork-server/interfaces"
 	"hireforwork-server/models"
 	"log"
 	"math"
 	"net/http"
+	"time"
 
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
@@ -15,7 +17,7 @@ import (
 )
 
 // Lấy danh sách company với phân trang
-func GetCompanies(page int, pageSize int, companyName, companyEmail string) (models.PaginateDocs[models.Company], error) {
+func GetCompanies(page int, pageSize int, filter interfaces.ICompanyFilter) (models.PaginateDocs[models.Company], error) {
 
 	var companies []models.Company
 
@@ -30,12 +32,34 @@ func GetCompanies(page int, pageSize int, companyName, companyEmail string) (mod
 
 	bsonFilter := bson.D{{"isDeleted", false}}
 
-	if companyName != "" {
-		bsonFilter = append(bsonFilter, bson.E{"companyName", bson.D{{"$regex", companyName}, {"$options", "i"}}})
+	if filter.CompanyName != "" {
+		bsonFilter = append(bsonFilter, bson.E{"companyName", bson.D{{"$regex", filter.CompanyName}, {"$options", "i"}}})
 	}
 
-	if companyEmail != "" {
-		bsonFilter = append(bsonFilter, bson.E{"contact.companyEmail", bson.D{{"$regex", companyEmail}, {"$options", "i"}}})
+	if filter.CompanyEmail != "" {
+		bsonFilter = append(bsonFilter, bson.E{"contact.companyEmail", bson.D{{"$regex", filter.CompanyEmail}, {"$options", "i"}}})
+	}
+
+	if filter.StartDate != nil || filter.EndDate != nil {
+		dateFilter := bson.D{}
+
+		if filter.StartDate != nil {
+			start, _ := time.Parse("2006-01-02", *filter.StartDate)
+			startOfDay := time.Date(start.Year(), start.Month(), start.Day(), 0, 0, 0, 0, start.Location())
+			dateFilter = append(dateFilter, bson.E{"$gte", startOfDay})
+		}
+
+		if filter.EndDate != nil {
+			end, _ := time.Parse("2006-01-02", *filter.EndDate)
+			endOfDay := time.Date(end.Year(), end.Month(), end.Day(), 23, 59, 59, 999, end.Location())
+			dateFilter = append(dateFilter, bson.E{"$lte", endOfDay})
+		} else {
+			now := time.Now()
+			endOfDay := time.Date(now.Year(), now.Month(), now.Day(), 23, 59, 59, 999, now.Location())
+			dateFilter = append(dateFilter, bson.E{"$lte", endOfDay})
+		}
+
+		bsonFilter = append(bsonFilter, bson.E{"createAt", dateFilter})
 	}
 
 	// Cấu hình phân trang
@@ -169,42 +193,47 @@ func GetCareersByJobID(jobID string, companyID string) ([]models.UserInfo, error
 	return applicants, nil
 }
 
-func GetJobsByCompanyID(companyID string, page int64, limit int64) (models.PaginateDocs[models.Jobs], error) {
+func GetJobsByCompanyID(companyID string, page int, pageSize int) (models.PaginateDocs[models.Jobs], error) {
+
 	companyObjectID, _ := primitive.ObjectIDFromHex(companyID)
 
 	if page < 1 {
 		page = 1
 	}
-	if limit < 1 {
-		limit = 10
+
+	if pageSize < 1 {
+		pageSize = 10
 	}
 
-	skip := (page - 1) * limit
+	skip := (page - 1) * pageSize
 
-	findOptions := options.Find().
-		SetSort(bson.D{{"jobTitle", 1}}).
-		SetLimit(limit).
-		SetSkip(skip)
+	filter := bson.M{"isDeleted": false, "companyID": companyObjectID}
 
-	totalDocs, _ := jobCollection.CountDocuments(context.Background(), bson.M{"isDeleted": false, "companyID": companyObjectID})
-	totalPage := int64(math.Ceil(float64(totalDocs) / float64(limit)))
+	findOptions := options.Find().SetSkip(int64(skip)).SetLimit(int64(pageSize)).SetSort(bson.D{{"jobTitle", 1}})
+
+	totalDocs, _ := jobCollection.CountDocuments(context.Background(), filter)
+
+	totalPages := int64(math.Ceil(float64(totalDocs) / float64(pageSize)))
+
 	var jobs []models.Jobs
-	cursor, err := jobCollection.Find(context.Background(), bson.M{"isDeleted": false, "companyID": companyObjectID}, findOptions)
+
+	cursor, err := jobCollection.Find(context.Background(), filter, findOptions)
+
 	if err != nil {
-		log.Printf("Error finding jobs for company: %v", err)
+		return models.PaginateDocs[models.Jobs]{}, err
 	}
+	defer cursor.Close(context.Background())
 
 	if err = cursor.All(context.Background(), &jobs); err != nil {
-		log.Printf("Error decoding jobs: %v", err)
+		return models.PaginateDocs[models.Jobs]{}, err
 	}
 
 	result := models.PaginateDocs[models.Jobs]{
 		Docs:        jobs,
 		TotalDocs:   totalDocs,
 		CurrentPage: int64(page),
-		TotalPage:   totalPage,
+		TotalPage:   totalPages,
 	}
-
 	return result, nil
 }
 
