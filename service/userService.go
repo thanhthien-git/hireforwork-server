@@ -426,7 +426,6 @@ func RequestPasswordReset(email string) (string, error) {
 	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
 	code := rng.Intn(9000) + 1000
 	user.VerificationCode = fmt.Sprintf("%d", code)
-	// fmt.Println("Mã xác nhận:", user.VerificationCode)
 	subject := "Mã xác nhận khôi phục mật khẩu"
 	body := fmt.Sprintf("Mã xác nhận của bạn là: %s", user.VerificationCode)
 	if err := SendEmail(email, subject, body); err != nil {
