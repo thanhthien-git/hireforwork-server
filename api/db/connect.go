@@ -3,7 +3,6 @@ package dbHelper
 import (
 	"context"
 	"log"
-	"net/http"
 	"os"
 	"time"
 
@@ -26,13 +25,6 @@ func ConnectDB() (*mongo.Client, context.Context, error) {
 	//notify when success
 	log.Println("Connect to MongoDB")
 	return client, ctx, nil
-}
-
-func ValidateError(err error, w http.ResponseWriter) {
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
 }
 
 func GetCollection(ctx context.Context, collectionName string, client *mongo.Client) *mongo.Collection {
