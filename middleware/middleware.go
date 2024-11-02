@@ -18,14 +18,13 @@ func JWTMiddleware(authService *service.AuthService) func(http.Handler) http.Han
 
 			tokenString := strings.TrimSpace(strings.Replace(authHeader, "Bearer ", "", 1))
 
-			// Validate the token
 			claims, err := authService.ValidateToken(tokenString)
 			if err != nil {
 				http.Error(w, "Invalid token: "+err.Error(), http.StatusUnauthorized)
 				return
 			}
 
-			ctx := context.WithValue(r.Context(), "username", claims.Username)
+			ctx := context.WithValue(r.Context(), "userID", claims.Subject)
 			r = r.WithContext(ctx)
 
 			next.ServeHTTP(w, r)

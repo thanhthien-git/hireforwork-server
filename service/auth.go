@@ -53,7 +53,7 @@ func init() {
 
 // Generate token
 func (a AuthService) GenerateToken(username string, id primitive.ObjectID, role string) (string, error) {
-	expirationTime := time.Now().Add(100 * time.Minute)
+	expirationTime := time.Now().Add(1000 * time.Minute)
 	claims := &Claims{
 		Username: username,
 		Role:     role,
@@ -143,4 +143,3 @@ func (a *AuthService) LoginForCompany(credential Credentials) (LoginResponse, er
 	}
 	return response, nil
 }
-
