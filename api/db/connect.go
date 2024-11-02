@@ -3,6 +3,7 @@ package dbHelper
 import (
 	"context"
 	"log"
+	"net/http"
 	"os"
 	"time"
 
@@ -36,4 +37,9 @@ func LoadEnv() {
 	if err := godotenv.Load(".env"); err != nil {
 		log.Fatalf("Error loading .env file: %v", err)
 	}
+}
+
+func Handler(w http.ResponseWriter, r *http.Request) {
+
+	w.Write([]byte("Connected to MongoDB"))
 }
