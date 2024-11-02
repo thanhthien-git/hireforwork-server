@@ -2,14 +2,12 @@ package api
 
 import (
 	api "hireforwork-server/api/router"
-	"log"
 	"net/http"
 
 	"github.com/rs/cors"
 )
 
-func main() {
-	// Create router
+func Handler(w http.ResponseWriter, r *http.Request) {
 	router := api.SetUpRouter()
 
 	c := cors.New(cors.Options{
@@ -19,11 +17,5 @@ func main() {
 		AllowCredentials: true,
 	})
 
-	handler := c.Handler(router)
-
-	// Run server
-	log.Printf("Server is running on port 8080")
-	if err := http.ListenAndServe(":8080", handler); err != nil {
-		log.Fatal(err)
-	}
+	c.Handler(router).ServeHTTP(w, r)
 }
