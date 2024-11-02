@@ -3,9 +3,9 @@ package handlers
 import (
 	"encoding/json"
 	"fmt"
-	"hireforwork-server/interfaces"
-	"hireforwork-server/models"
-	"hireforwork-server/service"
+	"hireforwork-server/api/interfaces"
+	"hireforwork-server/api/models"
+	"hireforwork-server/api/service"
 	"io/ioutil"
 	"log"
 	"net/http"

@@ -2,7 +2,7 @@ package handlers
 
 import (
 	"encoding/json"
-	"hireforwork-server/service"
+	"hireforwork-server/api/service"
 	"net/http"
 	"strconv"
 )

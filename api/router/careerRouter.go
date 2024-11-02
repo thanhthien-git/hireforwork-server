@@ -2,7 +2,7 @@ package api
 
 import (
 	"hireforwork-server/api/handlers"
-	"hireforwork-server/middleware"
+	"hireforwork-server/api/middleware"
 
 	"github.com/gorilla/mux"
 )

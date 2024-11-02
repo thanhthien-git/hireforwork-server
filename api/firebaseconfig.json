@@ -1,0 +1,14 @@
+{
+  "type": "service_account",
+  "project_id": "hireforwork-server-file",
+  "private_key_id": "59c3364b1c28fcfd40f8b28e98110abea07c9573",
+  "private_key": "-----BEGIN PRIVATE KEY-----\nMIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQCS/JExV4H8dgAm\nZ8d1L7pbfEoyeXsSxRyLOqXWKVT/nKduxHDGBB52Apipsgu8z8T+cYrFwoyGT6wD\nM+awVSF38WGu7Wsh6NY8rrr5z7cCxeO0jWWdESaf6J6hOTSBjpAVO8tiSiLKe0en\nVeJsQkoHRTp32S9NODVIdS8vMueI5Tke9toDSaVua2GS0dLNnbQDIOLoGl/uDpq6\ncxluPzZlrEpM9w4iRG/eskjrprZlE8ZSYNU+4lriKX1h+SOlaG1nL/PdfgURKClS\n2m6yc/7y6gpIztkahjh26syzA9sXZOehLtVZrWq3BlhuqHPkgqtHWp+uksFOcm4Z\nsIGldNn7AgMBAAECggEANr12+TBEyZfMkID/yEXBGoccPtX9Hs1nxvZNgoecDyHx\nPRBNi4FHMt3eqvwS4PtjuvrgGqxMl0yenAa9OBhMQZYUsgfbaSKEfs739UcFOjQm\njDxIhok3oEAKq7JZOpK0WCQPp4hCkrP8yHX0wCqj1TdUAgRRWGnBdj2mF+bWUaWz\nve9m8Qx2UL0hw9der+eXFqGEx44iMoBN9ZyzYhz8yPGgs8uC7V3H+/gE7tEYLaKz\nsymrNbSJK7rChX1LOoZgz1eeX3vf+MzCM+PTiuTIpLDKtrO2dhTs+L9HPkejC2+V\nwp1zHi1GqELL3QFeueW/VIF93lvM7xmWAq4yrzy8aQKBgQDNDxYzE7tjxIHypXBV\nM6CJ4O+37uuGAkEkq7aNNMdyXjHbkzg95Qud87YTSaxnk3mWeTVARLGV8Py3Lb87\nk/r7gpNZRAOzmYrWMu1ya6K3FNC21usPAgppuYsYm/lVDjzHHY6t27HNRcFSXHC7\nlI1sCIAchM93E7ZXDmbkRtEf9QKBgQC3gFDffJLDSuj/e+6/h/y8D9SO2M4VkHCe\nuTbmSzCkbVywpKkgIjIFAu5a1pQrBfleg67FmXR8e5NEoiE1V0bKSPbKH4hQ5M5D\n8MyczNGkZ70ivX/Bj1atO0H6dBalLR3AZIuL7R41c2+gvbJOKbX8m4jPq4NAt5Z/\nPKqnOX6MLwKBgQCoJbLid0+147FbM2YFt6vw484uWXAwFzErzNKIv7q8gZkIoJQB\nzQvVnb6z2jnRRRDy3rlX1fx5I39XBeBGDnZEPzJshGU0pLdAJcqnhLOMxTjQdTOS\nvu2i/E6fA2dU47Pa4tXYosoNtSFtU/ftGUdOSzoiKJWm4zcl891TWu6o8QKBgFJC\nmH6HNreLZkXZhd6glICtzAi5UjFCjenpd53nSQf86pdZSWPZUHkEpltcZBGhXPes\nqnV0ZE7FivAyihaCaH6YFOHpHs+8smaslN0ZyEUeKCBhuNrJaf7AWMRwtBIZ1oN/\nzzrL8kXd2MXDJCJ7+lQiWUNXTMB/TFz/kjTixkMLAoGACLVsZXnfMHKNw2+PnAoB\nYeb2c8uFKP1uKVrTdia7ks0sCBS+ArPJF7Sfy2ZkdTYN5G3jLjraWFjjO4seQpRG\n2WN6UFZADkJxbBfmYbK0bi9inqC5R6OZCyqBVYqbFdel/E0jz1cifkvJm4hCH9sN\nuhg+bcz0p0HQfMDYZuaJsnA=\n-----END PRIVATE KEY-----\n",
+  "client_email": "firebase-adminsdk-jw9w0@hireforwork-server-file.iam.gserviceaccount.com",
+  "client_id": "108982085254347874940",
+  "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+  "token_uri": "https://oauth2.googleapis.com/token",
+  "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+  "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/firebase-adminsdk-jw9w0%40hireforwork-server-file.iam.gserviceaccount.com",
+  "universe_domain": "googleapis.com"
+}
+  
