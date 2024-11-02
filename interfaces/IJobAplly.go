@@ -1,9 +1,8 @@
 package interfaces
 
-import "go.mongodb.org/mongo-driver/bson/primitive"
-
 type IJobApply struct {
-	JobID    primitive.ObjectID `json:"jobID"`
-	IDCareer primitive.ObjectID `json:"idCareer"`
-	CreateAt primitive.DateTime `json:"createAt"`
+	JobID     string `json:"jobID"`
+	IDCareer  string `json:"careerID"`
+	CompanyID string `json:"companyID"`
+	CareerCV  string `json:"careerCV"`
 }

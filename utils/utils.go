@@ -23,6 +23,14 @@ func GetQueryID(r *http.Request) primitive.ObjectID {
 	return objectID
 }
 
+func ConvertoObjectID(objID string) (primitive.ObjectID, error) {
+	id, err := primitive.ObjectIDFromHex(objID)
+	if err != nil {
+		return primitive.ObjectID{}, err
+	}
+	return id, nil
+}
+
 func EncodeToSHA(password string) string {
 	data := []byte(password)
 

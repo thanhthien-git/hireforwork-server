@@ -6,9 +6,9 @@ import (
 	"hireforwork-server/interfaces"
 	"hireforwork-server/models"
 	"hireforwork-server/service"
-	"log"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"github.com/gorilla/mux"
 )
@@ -74,18 +74,20 @@ func ApplyJob(w http.ResponseWriter, r *http.Request) {
 	request := interfaces.IJobApply{}
 
 	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
-		http.Error(w, "Invalid input", http.StatusBadRequest)
-		log.Printf("Error decoding JSON: %v", err)
+		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	updatedJob, _ := service.ApplyForJob(request)
+	err := service.ApplyForJob(request)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	if err := json.NewEncoder(w).Encode(updatedJob); err != nil {
-		http.Error(w, "Error encoding response JSON", http.StatusInternalServerError)
-	}
+	json.NewEncoder(w).Encode(map[string]string{"message": "Ứng tuyển thành công, vui lòng kiểm tra email!"})
+
 }
 
 func GetSuggestJobs(w http.ResponseWriter, r *http.Request) {
@@ -106,21 +108,19 @@ func GetSuggestJobs(w http.ResponseWriter, r *http.Request) {
 
 func GetJobByID(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
+	authHeader := r.Header.Get("Authorization")
+	tokenString := strings.TrimPrefix(authHeader, "Bearer ")
 
-	job, err := service.GetJobByID(vars["id"])
+	job, err := service.GetJobByID(vars["id"], tokenString)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusNotFound)
 		return
 	}
 
-	response := interfaces.IResponse[models.Jobs]{
-		Doc: job,
-	}
-
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 
-	if err := json.NewEncoder(w).Encode(response); err != nil {
+	if err := json.NewEncoder(w).Encode(job); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}

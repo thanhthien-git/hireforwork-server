@@ -6,10 +6,13 @@ import (
 	"hireforwork-server/constants"
 	"hireforwork-server/interfaces"
 	"hireforwork-server/models"
+	"hireforwork-server/utils"
 	"log"
 	"math"
+	"os"
 	"time"
 
+	"github.com/dgrijalva/jwt-go"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -111,33 +114,29 @@ func CheckIsExistedJob(request interfaces.IUserJob, collection *mongo.Collection
 	return true
 }
 
-func ApplyForJob(request interfaces.IJobApply) (models.Jobs, error) {
+func ApplyForJob(request interfaces.IJobApply) error {
+	id, _ := utils.ConvertoObjectID(request.IDCareer)
+	companyID, _ := utils.ConvertoObjectID(request.CompanyID)
+	jobID, _ := utils.ConvertoObjectID(request.JobID)
+
 	newApply := models.CareerApplyJob{
 		ID:        primitive.NewObjectID(),
-		CareerID:  request.IDCareer,
-		JobID:     request.JobID,
+		CareerID:  id,
+		JobID:     jobID,
 		CreateAt:  primitive.NewDateTimeFromTime(time.Now()),
+		CareerCV:  request.CareerCV,
 		IsDeleted: false,
 		Status:    constants.PENDING,
+		CompanyID: companyID,
 	}
 
 	_, err := careerApplyJob.InsertOne(context.Background(), newApply)
 	if err != nil {
-		log.Printf("Error inserting apply data into CareerApplyJob: %v", err)
-		return models.Jobs{}, err
+		log.Printf("Loi o day")
+		return err
 	}
 
-	filter := bson.M{"_id": request.JobID, "isDeleted": false}
-	update := bson.M{"$push": bson.M{"userApply": request.IDCareer}}
-
-	var job models.Jobs
-	err = jobCollection.FindOneAndUpdate(context.Background(), filter, update).Decode(&job)
-	if err != nil {
-		log.Printf("Error updating job with user info: %v", err)
-		return models.Jobs{}, err
-	}
-
-	return job, nil
+	return nil
 }
 
 func GetLatestJobs() ([]models.Jobs, error) {
@@ -159,19 +158,113 @@ func GetLatestJobs() ([]models.Jobs, error) {
 	return jobs, nil
 }
 
-func GetJobByID(jobID string) (models.Jobs, error) {
+func GetJobByID(jobID string, tokenString string) (bson.M, error) {
 	_id, err := primitive.ObjectIDFromHex(jobID)
+
 	if err != nil {
-		return models.Jobs{}, err
+		return nil, err
 	}
 
-	var job models.Jobs
-	projection := bson.D{{"userApply", 0}}
-	findOptions := options.FindOne().SetProjection(projection)
-
-	err = jobCollection.FindOne(context.Background(), bson.D{{"_id", _id}}, findOptions).Decode(&job)
-	if err != nil {
-		return models.Jobs{}, err
+	pipeline := mongo.Pipeline{
+		{{"$match", bson.D{{"_id", _id}}}},
 	}
-	return job, nil
+
+	var userID primitive.ObjectID
+	if tokenString != "" {
+		claims := jwt.MapClaims{}
+		_, err := jwt.ParseWithClaims(tokenString, claims, func(token *jwt.Token) (interface{}, error) {
+			return []byte(os.Getenv("SECRET_KEY")), nil
+		})
+		if err != nil {
+			return nil, err
+		}
+		userID, _ = primitive.ObjectIDFromHex(claims["sub"].(string))
+	}
+
+	if userID != primitive.NilObjectID {
+
+		lookUpApplyStage := bson.D{
+			{"$lookup", bson.D{
+				{"from", "CareerApplyJob"},
+				{"let", bson.D{
+					{"jobID", _id},
+					{"careerID", userID},
+				}},
+				{"pipeline", mongo.Pipeline{
+					{
+						{"$match", bson.D{
+							{"$expr", bson.D{
+								{"$and", bson.A{
+									bson.D{{"$eq", bson.A{"$jobID", "$$jobID"}}},
+									bson.D{{"$eq", bson.A{"$careerID", "$$careerID"}}},
+								}},
+							}},
+						}},
+					},
+				}},
+				{"as", "applications"},
+			}},
+		}
+		lookUpSaveStage := bson.D{
+			{"$lookup", bson.D{
+				{"from", "CareerSaveJob"},
+				{"let", bson.D{
+					{"jobID", _id},       // The job ID to check
+					{"careerID", userID}, // The career ID to match
+				}},
+				{"pipeline", mongo.Pipeline{
+					{
+						{"$match", bson.D{
+							{"$expr", bson.D{
+								{"$and", bson.A{
+									bson.D{{"$eq", bson.A{"$careerID", "$$careerID"}}},
+									bson.D{{"$in", bson.A{"$$jobID", "$saveJob"}}},
+								}},
+							}},
+						}},
+					},
+				}},
+				{"as", "saved"},
+			}},
+		}
+
+		projectStage := bson.D{
+			{"$set", bson.D{
+				{"isApplied", bson.D{
+					{"$gt", bson.A{bson.D{{"$size", "$applications"}}, 0}},
+				}},
+				{"isSaved", bson.D{
+					{"$gt", bson.A{bson.D{{"$size", "$saved"}}, 0}},
+				}},
+			}},
+		}
+
+		unsetStage := bson.D{
+			{"$unset", bson.A{"applications", "saved"}},
+		}
+
+		pipeline = append(pipeline, lookUpApplyStage, lookUpSaveStage, projectStage, unsetStage)
+	}
+
+	cursor, err := jobCollection.Aggregate(context.Background(), pipeline)
+	if err != nil {
+		return nil, err
+	}
+	defer cursor.Close(context.Background())
+
+	var job bson.M
+	if cursor.Next(context.Background()) {
+		err = cursor.Decode(&job)
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		return nil, mongo.ErrNoDocuments
+	}
+
+	result := bson.M{
+		"doc": job,
+	}
+
+	return result, nil
 }

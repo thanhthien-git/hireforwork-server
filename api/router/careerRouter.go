@@ -18,6 +18,9 @@ func setUpCareerRoutes(router *mux.Router, handler *handlers.Handler) {
 	careerRouter.Use(middleware.JWTMiddleware(handler.AuthService))
 	careerRouter.HandleFunc("", handlers.GetUser).Methods("GET")
 	careerRouter.HandleFunc("/{id}", handlers.GetUserByID).Methods("GET")
+	careerRouter.HandleFunc("/{id}/save-job", handlers.GetSavedJobs).Methods("GET")
+	careerRouter.HandleFunc("/{id}/save", handlers.SaveJob).Methods("POST")
+	careerRouter.HandleFunc("/{id}/remove-save", handlers.RemoveSaveJob).Methods("POST")
 	careerRouter.HandleFunc("/{id}", handlers.DeleteUserByID).Methods("DELETE")
 	careerRouter.HandleFunc("/{id}/upload-image", handlers.UploadImage).Methods("POST")
 	careerRouter.HandleFunc("/{id}/upload-resume", handlers.UploadResume).Methods("POST")
@@ -25,11 +28,8 @@ func setUpCareerRoutes(router *mux.Router, handler *handlers.Handler) {
 	careerRouter.HandleFunc("/{id}/update", handlers.UpdateUser).Methods("POST")
 
 	// Additional Routes
-	router.HandleFunc("/careers/savedjobs/{id}", handlers.GetSavedJobs).Methods("GET")
 	router.HandleFunc("/careers/viewedjobs/{id}", handlers.GetViewedJobs).Methods("GET")
-	router.HandleFunc("/careers/savejob", handlers.SaveJob).Methods("POST")
 	router.HandleFunc("/careers/viewedjob", handlers.CareerViewedJob).Methods("POST")
-	router.HandleFunc("/careers/{careerID}/saved-jobs/{jobID}", handlers.RemoveSaveJobHandler).Methods("DELETE")
 	router.HandleFunc("/request-password-reset", handlers.RequestPasswordResetHandler).Methods("POST")
 	router.HandleFunc("/reset-password", handlers.ResetPasswordHandler).Methods("POST")
 }
