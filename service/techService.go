@@ -2,7 +2,6 @@ package service
 
 import (
 	"context"
-	"fmt"
 	"hireforwork-server/models"
 	"math"
 
@@ -10,7 +9,7 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
-func GetTech(page, pageSize int) (models.PaginateDocs[models.Tech], error) {
+func GetTech(page, pageSize int, techName string) (models.PaginateDocs[models.Tech], error) {
 	var techList []models.Tech
 
 	if page < 1 {
@@ -21,24 +20,30 @@ func GetTech(page, pageSize int) (models.PaginateDocs[models.Tech], error) {
 	}
 
 	bsonFilter := bson.D{{"isDeleted", false}}
+	if techName != "" {
+		bsonFilter = append(bsonFilter, bson.E{"technology", bson.D{{"$regex", techName}, {"$options", "i"}}})
+	}
+
 	skip := (page - 1) * pageSize
+	findOptions := options.Find().
+		SetProjection(bson.D{{"isDeleted", 0}}).
+		SetLimit(int64(pageSize)).
+		SetSkip(int64(skip)).
+		SetSort(bson.D{{"technology", 1}})
 
-	findOption := options.Find().SetProjection(bson.D{{"isDeleted", 0}})
-	findOption.SetLimit(int64(pageSize))
-	findOption.SetSkip(int64(skip))
-	findOption.SetSort(bson.D{{"technology", 1}})
-
-	totalDocs, _ := techCollection.CountDocuments(context.Background(), bsonFilter)
-	totalPage := int(math.Ceil(float64(totalDocs) / float64(pageSize)))
-	cursor, err := techCollection.Find(context.Background(), bsonFilter, findOption)
+	totalDocs, err := techCollection.CountDocuments(context.Background(), bsonFilter)
 	if err != nil {
-		fmt.Println("Lỗi khi tìm kiếm công nghệ: %v", err)
+		return models.PaginateDocs[models.Tech]{}, err
+	}
+	totalPage := int(math.Ceil(float64(totalDocs) / float64(pageSize)))
+
+	cursor, err := techCollection.Find(context.Background(), bsonFilter, findOptions)
+	if err != nil {
 		return models.PaginateDocs[models.Tech]{}, err
 	}
 	defer cursor.Close(context.Background())
 
 	if err = cursor.All(context.Background(), &techList); err != nil {
-		fmt.Println("Lỗi khi tìm kiếm công nghệ: %v", err)
 		return models.PaginateDocs[models.Tech]{}, err
 	}
 

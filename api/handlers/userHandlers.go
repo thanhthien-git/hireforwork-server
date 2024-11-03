@@ -303,10 +303,6 @@ func CareerViewedJob(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Invalid request payload", http.StatusBadRequest)
 		return
 	}
-
-	// Debugging payload
-	fmt.Printf("Received CareerID: %s, JobID: %s\n", payload.CareerID, payload.JobID)
-
 	viewedJob, err := service.CareerViewedJob(payload.CareerID, payload.JobID)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)

@@ -210,7 +210,6 @@ func GetCareerApply(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// Hàm phụ để chuyển chuỗi thành con trỏ (nếu giá trị không rỗng)
 func getPointer(value string) *string {
 	if value == "" {
 		return nil

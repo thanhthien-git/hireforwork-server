@@ -7,16 +7,16 @@ import (
 	"strconv"
 )
 
-func GetTech(w http.ResponseWriter, r *http.Request) {
+func GetCategory(w http.ResponseWriter, r *http.Request) {
 	pageStr := r.URL.Query().Get("page")
 	page, _ := strconv.Atoi(pageStr)
 
 	pageSizeStr := r.URL.Query().Get("pageSize")
 	pageSize, _ := strconv.Atoi(pageSizeStr)
 
-	techName := r.URL.Query().Get("techName") 
+	categoryName := r.URL.Query().Get("categoryName") 
 
-	techList, err := service.GetTech(page, pageSize, techName)
+	categoryList, err := service.GetCategory(page, pageSize, categoryName)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -24,7 +24,7 @@ func GetTech(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 
-	if err := json.NewEncoder(w).Encode(techList); err != nil {
+	if err := json.NewEncoder(w).Encode(categoryList); err != nil {
 		http.Error(w, "Error encoding JSON", http.StatusInternalServerError)
 	}
 }

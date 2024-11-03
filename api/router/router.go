@@ -21,6 +21,7 @@ func SetUpRouter() *mux.Router {
 	setUpCompanyRoutes(router, handler)
 	setUpJobRouter(router, handler)
 	setUpTechRouter(router, handler)
+	setUpCategoryRouter(router, handler)
 	setUpFieldRouter(router, handler)
 	return router
 }
