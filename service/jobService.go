@@ -19,37 +19,157 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
-func GetJob(page, pageSize int) (models.PaginateDocs[models.Jobs], error) {
-	var jobs []models.Jobs
+func GetJob(page, pageSize int, filter interfaces.IJobFilter) (bson.M, error) {
 
 	skip := (page - 1) * pageSize
+	matchStage := bson.M{"isDeleted": false}
 
-	findOption := options.Find()
-	findOption.SetLimit(int64(pageSize))
-	findOption.SetSkip(int64(skip))
+	facetStage := bson.D{
+		{"$facet", bson.D{
+			{"totalCount", []bson.D{{{"$count", "count"}}}},
+			{"data", []bson.D{
+				{{"$skip", int64(skip)}},
+				{{"$limit", int64(pageSize)}},
+				{{"$addFields", bson.D{
+					{"companyName", "$companyDetails.companyName"},
+					{"companyImage", "$companyDetails.companyImage"},
+				}}},
+			}},
+		}},
+	}
 
-	totalDocs, _ := jobCollection.CountDocuments(context.Background(), bson.D{})
-	totalPage := int64(math.Ceil(float64(totalDocs) / float64(pageSize)))
-	cursor, err := jobCollection.Find(context.Background(), bson.D{{"isDeleted", false}}, findOption)
+	matchOption := bson.M{}
+
+	if filter.JobTitle != "" {
+		matchStage["jobTitle"] = bson.M{"$regex": filter.JobTitle, "$options": "i"}
+	}
+	//filter by create date
+	if filter.DateCreateFrom != "" && filter.DateCreateTo != "" {
+		matchOption["createAt"] = bson.M{
+			"$gte": filter.DateCreateFrom,
+			"$lte": filter.DateCreateTo,
+		}
+	}
+	//filter by expire date
+	if filter.EndDateFrom != "" && filter.EndDateTo != "" {
+		matchOption["createAt"] = bson.M{
+			"$gte": filter.EndDateFrom,
+			"$lte": filter.EndDateTo,
+		}
+	}
+	//filter by salary
+	if filter.SalaryFrom != "" && filter.SalaryTo != "" {
+		matchOption["jobSalaryMin"] = bson.M{"$gte": filter.SalaryFrom}
+		matchOption["jobSalaryMax"] = bson.M{"$lte": filter.SalaryTo}
+	}
+	//filter by working location
+	if len(filter.WorkingLocation) > 0 {
+		matchOption["workingLocation"] = bson.M{"$in": filter.WorkingLocation}
+	}
+	//filter by job require
+	if len(filter.JobRequirement) > 0 {
+		matchOption["jobRequirement"] = bson.M{"$in": filter.JobRequirement}
+	}
+	//filter by job level
+	if filter.JobLevel != "" {
+		matchOption["jobLevel"] = filter.JobLevel
+	}
+
+	projectStage := bson.D{
+		{"$project", bson.D{
+			{"totalCount", 1},
+			{"data", bson.D{
+				{"$map", bson.D{
+					{"input", "$data"},
+					{"as", "doc"},
+					{"in", bson.D{
+						{"_id", "$$doc._id"},
+						{"companyID", "$$doc.companyID"},
+						{"companyName", "$$doc.companyName"},
+						{"companyImage", "$$doc.companyImage"},
+						{"createAt", "$$doc.createAt"},
+						{"expireDate", "$$doc.expireDate"},
+						{"isClosed", "$$doc.isClosed"},
+						{"isDeleted", "$$doc.isDeleted"},
+						{"isHot", "$$doc.isHot"},
+						{"jobCategory", "$$doc.jobCategory"},
+						{"jobDescription", "$$doc.jobDescription"},
+						{"jobLevel", "$$doc.jobLevel"},
+						{"jobRequirement", "$$doc.jobRequirement"},
+						{"jobSalaryMax", "$$doc.jobSalaryMax"},
+						{"jobSalaryMin", "$$doc.jobSalaryMin"},
+						{"jobTitle", "$$doc.jobTitle"},
+						{"quantity", "$$doc.quantity"},
+						{"workingLocation", "$$doc.workingLocation"},
+					}},
+				}},
+			}},
+		}},
+	}
+
+	//default pipeline
+	pipeline := mongo.Pipeline{
+		{{"$match", matchStage}},
+		{{"$lookup", bson.D{
+			{"from", "Company"},
+			{"localField", "companyID"},
+			{"foreignField", "_id"},
+			{"as", "companyDetails"},
+		}}},
+		{{"$unwind", bson.D{
+			{"path", "$companyDetails"},
+			{"preserveNullAndEmptyArrays", true},
+		}}},
+		{{"$match", bson.D{
+			{"$or", bson.A{
+				bson.D{{"companyDetails.isDeleted", false}},
+				bson.D{{"companyDetails", bson.D{{"$exists", false}}}},
+			}},
+		}}},
+		{{"$match", matchOption}},
+	}
+
+	if filter.CompanyName != "" {
+		pipeline = append(pipeline, bson.D{{
+			"$match", bson.D{{
+				"companyDetails.companyName", bson.D{
+					{"$regex", filter.CompanyName},
+					{"$options", "i"},
+				},
+			}},
+		}})
+	}
+
+	pipeline = append(pipeline, facetStage, projectStage)
+
+	var result []bson.M
+	cursor, err := jobCollection.Aggregate(context.Background(), pipeline)
+
 	if err != nil {
 		log.Printf("Error finding documents: %v", err)
-		return models.PaginateDocs[models.Jobs]{}, err
+		return nil, err
 	}
 	defer cursor.Close(context.Background())
 
-	if err = cursor.All(context.Background(), &jobs); err != nil {
-		log.Printf("Error parsing job documents: %v", err)
-		return models.PaginateDocs[models.Jobs]{}, err
+	if err = cursor.All(context.Background(), &result); err != nil {
+		return nil, err
 	}
 
-	result := models.PaginateDocs[models.Jobs]{
-		Docs:        jobs,
-		TotalDocs:   totalDocs,
-		CurrentPage: int64(page),
-		TotalPage:   totalPage,
+	totalDocs := int64(0)
+	if len(result[0]["totalCount"].(bson.A)) > 0 {
+		countVal := result[0]["totalCount"].(bson.A)[0].(bson.M)["count"].(int32)
+		totalDocs = int64(countVal) // Convert int32 to int64
 	}
 
-	return result, nil
+	jobs := result[0]["data"].(bson.A)
+	totalPage := int64(math.Ceil(float64(totalDocs) / float64(pageSize)))
+
+	return bson.M{
+		"docs":        jobs,
+		"totalDocs":   totalDocs,
+		"currentPage": page,
+		"totalPage":   totalPage,
+	}, nil
 }
 
 func CreateJob(job models.Jobs) (models.Jobs, error) {
