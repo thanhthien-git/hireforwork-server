@@ -20,6 +20,12 @@ func GetJob(w http.ResponseWriter, r *http.Request) {
 	pageSizeStr := r.URL.Query().Get("pageSize")
 	pageSize, _ := strconv.Atoi(pageSizeStr)
 
+	isHotStr := r.URL.Query().Get("isHot")
+	isHot := false
+	if isHotStr == "true" || isHotStr == "1" {
+		isHot = true
+	}
+
 	filter := interfaces.IJobFilter{
 		JobTitle:        r.URL.Query().Get("jobTitle"),
 		CompanyName:     r.URL.Query().Get("companyName"),
@@ -32,6 +38,7 @@ func GetJob(w http.ResponseWriter, r *http.Request) {
 		WorkingLocation: r.URL.Query()["workingLocation"],
 		JobRequirement:  r.URL.Query()["jobRequirement"],
 		JobLevel:        r.URL.Query().Get("jobLevel"),
+		IsHot:           isHot,
 	}
 	jobs, err := service.GetJob(page, pageSize, filter)
 	if err != nil {

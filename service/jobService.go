@@ -70,6 +70,9 @@ func GetJob(page, pageSize int, filter interfaces.IJobFilter) (bson.M, error) {
 	if len(filter.JobRequirement) > 0 {
 		matchOption["jobRequirement"] = bson.M{"$in": filter.JobRequirement}
 	}
+	if filter.IsHot {
+		matchOption["isHot"] = true
+	}
 	//filter by job level
 	if filter.JobLevel != "" {
 		matchOption["jobLevel"] = filter.JobLevel
