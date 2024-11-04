@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"fmt"
 	"hireforwork-server/models"
 	"math"
 
@@ -39,11 +40,15 @@ func GetCategory(page, pageSize int, categoryName string) (models.PaginateDocs[m
 
 	cursor, err := categoryCollection.Find(context.Background(), bsonFilter, findOptions)
 	if err != nil {
+
+	if err != nil {
+		fmt.Println("Lỗi khi tìm kiếm công nghệ: %v", err)
 		return models.PaginateDocs[models.Category]{}, err
 	}
 	defer cursor.Close(context.Background())
 
 	if err = cursor.All(context.Background(), &categoryList); err != nil {
+		fmt.Println("Lỗi khi tìm kiếm công nghệ: %v", err)
 		return models.PaginateDocs[models.Category]{}, err
 	}
 

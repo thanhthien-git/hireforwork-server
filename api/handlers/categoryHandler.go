@@ -13,9 +13,7 @@ func GetCategory(w http.ResponseWriter, r *http.Request) {
 
 	pageSizeStr := r.URL.Query().Get("pageSize")
 	pageSize, _ := strconv.Atoi(pageSizeStr)
-
 	categoryName := r.URL.Query().Get("categoryName") 
-
 	categoryList, err := service.GetCategory(page, pageSize, categoryName)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)

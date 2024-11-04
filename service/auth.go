@@ -92,8 +92,6 @@ func (a *AuthService) CheckPasswordHash(hashedPassword, password string) bool {
 	return hashedPassword == utils.EncodeToSHA(password)
 }
 
-// user authentication
-
 func (a *AuthService) LoginForCareer(credential Credentials) (LoginResponse, error) {
 	var career models.User
 
@@ -101,13 +99,12 @@ func (a *AuthService) LoginForCareer(credential Credentials) (LoginResponse, err
 		{"careerEmail", credential.Username},
 		{"isDeleted", false},
 	}).Decode(&career)
-
 	if err != nil {
-		return LoginResponse{}, errors.New("Invalid username or password")
+		return LoginResponse{}, errors.New("Tên đăng nhập hoặc tài khoản sai")
 	}
 
 	if !a.CheckPasswordHash(career.Password, credential.Password) {
-		return LoginResponse{}, errors.New("Invalid username or password")
+		return LoginResponse{}, errors.New("Tên đăng nhập hoặc tài khoản sai")
 	}
 	token, _ := a.GenerateToken(career.CareerEmail, career.Id, career.Role)
 

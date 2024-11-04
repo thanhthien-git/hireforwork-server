@@ -27,6 +27,8 @@ func init() {
 
 	careerApplyJob = dbHelper.GetCollection(ctx, os.Getenv("COLLECTION_CAREER_APPLYJOB"), client)
 
+	categoryCollection = dbHelper.GetCollection(ctx, os.Getenv("COLLECTION_CATEGORY"), client)
+
 	techCollection = dbHelper.GetCollection(ctx, os.Getenv("COLLECTION_TECHNOLOGIES"), client)
 	
 	categoryCollection = dbHelper.GetCollection(ctx, os.Getenv("COLLECTION_CATEGORY"), client)
