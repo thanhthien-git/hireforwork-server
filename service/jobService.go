@@ -40,6 +40,13 @@ func GetJob(page, pageSize int, filter interfaces.IJobFilter) (bson.M, error) {
 
 	matchOption := bson.M{}
 
+	if filter.Query != "" {
+		matchStage["$or"] = bson.A{
+			bson.M{"jobTitle": bson.M{"$regex": filter.Query, "$options": "i"}},
+			bson.M{"jobRequirement": bson.M{"$elemMatch": bson.M{"$regex": filter.Query, "$options": "i"}}},
+		}
+	}
+
 	if filter.JobTitle != "" {
 		matchStage["jobTitle"] = bson.M{"$regex": filter.JobTitle, "$options": "i"}
 	}
@@ -58,14 +65,19 @@ func GetJob(page, pageSize int, filter interfaces.IJobFilter) (bson.M, error) {
 		}
 	}
 	//filter by salary
-	if filter.SalaryFrom != "" && filter.SalaryTo != "" {
+	if filter.SalaryFrom != 0 && filter.SalaryTo != 0 {
 		matchOption["jobSalaryMin"] = bson.M{"$gte": filter.SalaryFrom}
 		matchOption["jobSalaryMax"] = bson.M{"$lte": filter.SalaryTo}
+	}
+	//filter by category
+	if len(filter.JobCategory) > 0 {
+		matchOption["jobCategory"] = bson.M{"$in": filter.JobCategory}
 	}
 	//filter by working location
 	if len(filter.WorkingLocation) > 0 {
 		matchOption["workingLocation"] = bson.M{"$in": filter.WorkingLocation}
 	}
+
 	//filter by job require
 	if len(filter.JobRequirement) > 0 {
 		matchOption["jobRequirement"] = bson.M{"$in": filter.JobRequirement}
@@ -196,19 +208,20 @@ func UpdateJob(job models.Jobs) (models.Jobs, error) {
 
 	update := bson.M{
 		"$set": bson.M{
-			"jobTitle":        job.JobTitle,
-			"jobSalaryMin":    job.JobSalaryMin,
-			"jobSalaryMax":    job.JobSalaryMax,
-			"jobRequirement":  job.JobRequirement,
-			"workingLocation": job.WorkingLocation,
-			"isHot":           job.IsHot,
-			"isClosed":        job.IsClosed,
-			"isDeleted":       job.IsDeleted,
-			"expireDate":      job.ExpireDate,
-			"jobCategory":     job.JobCategory,
-			"quantity":        job.Quantity,
-			"jobDescription":  job.JobDescription,
-			"jobLevel":        job.JobLevel,
+			"jobTitle":         job.JobTitle,
+			"jobSalaryMin":     job.JobSalaryMin,
+			"jobSalaryMax":     job.JobSalaryMax,
+			"jobRequirement":   job.JobRequirement,
+			"workingLocation":  job.WorkingLocation,
+			"isHot":            job.IsHot,
+			"isClosed":         job.IsClosed,
+			"isDeleted":        job.IsDeleted,
+			"expireDate":       job.ExpireDate,
+			"jobCategory":      job.JobCategory,
+			"jobDescription":   job.JobDescription,
+			"jobLevel":         job.JobLevel,
+			"recruitmentCount": job.RecruitmentCount,
+			"workingType":      job.WorkType,
 		},
 	}
 	opts := options.FindOneAndUpdate().SetReturnDocument(options.After)

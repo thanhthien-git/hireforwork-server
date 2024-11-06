@@ -26,6 +26,12 @@ func GetJob(w http.ResponseWriter, r *http.Request) {
 		isHot = true
 	}
 
+	salaryFromStr := r.URL.Query().Get("salaryFrom")
+	salaryFrom, _ := strconv.ParseInt(salaryFromStr, 10, 64)
+
+	salaryToStr := r.URL.Query().Get("salaryTo")
+	salaryTo, _ := strconv.ParseInt(salaryToStr, 10, 64)
+
 	filter := interfaces.IJobFilter{
 		JobTitle:        r.URL.Query().Get("jobTitle"),
 		CompanyName:     r.URL.Query().Get("companyName"),
@@ -33,13 +39,16 @@ func GetJob(w http.ResponseWriter, r *http.Request) {
 		DateCreateTo:    r.URL.Query().Get("dateCreateTo"),
 		EndDateFrom:     r.URL.Query().Get("endDateFrom"),
 		EndDateTo:       r.URL.Query().Get("endDateTo"),
-		SalaryFrom:      r.URL.Query().Get("salaryFrom"),
-		SalaryTo:        r.URL.Query().Get("salaryTo"),
+		SalaryFrom:      salaryFrom,
+		SalaryTo:        salaryTo,
 		WorkingLocation: r.URL.Query()["workingLocation"],
 		JobRequirement:  r.URL.Query()["jobRequirement"],
+		JobCategory:     r.URL.Query()["jobCategory"],
 		JobLevel:        r.URL.Query().Get("jobLevel"),
 		IsHot:           isHot,
+		Query:           r.URL.Query().Get("query"),
 	}
+
 	jobs, err := service.GetJob(page, pageSize, filter)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
