@@ -40,6 +40,11 @@ func GetJob(page, pageSize int, filter interfaces.IJobFilter) (bson.M, error) {
 
 	matchOption := bson.M{}
 
+	if filter.IsExpire {
+		currentDate := time.Now()
+		matchOption["expireDate"] = bson.M{"$gt": currentDate}
+	}
+
 	if filter.Query != "" {
 		matchStage["$or"] = bson.A{
 			bson.M{"jobTitle": bson.M{"$regex": filter.Query, "$options": "i"}},
@@ -104,8 +109,6 @@ func GetJob(page, pageSize int, filter interfaces.IJobFilter) (bson.M, error) {
 						{"companyImage", "$$doc.companyImage"},
 						{"createAt", "$$doc.createAt"},
 						{"expireDate", "$$doc.expireDate"},
-						{"isClosed", "$$doc.isClosed"},
-						{"isDeleted", "$$doc.isDeleted"},
 						{"isHot", "$$doc.isHot"},
 						{"jobCategory", "$$doc.jobCategory"},
 						{"jobDescription", "$$doc.jobDescription"},
@@ -338,7 +341,12 @@ func ApplyForJob(request interfaces.IJobApply) error {
 func GetLatestJobs() ([]models.Jobs, error) {
 	var jobs []models.Jobs
 
-	filter := bson.M{"isDeleted": false}
+	filter := bson.M{
+		"isDeleted": false,
+		"expireDate": bson.M{
+			"$gt": time.Now(),
+		},
+	}
 	opts := options.Find().SetSort(bson.D{{"createAt", -1}}).SetLimit(10)
 
 	cursor, err := jobCollection.Find(context.Background(), filter, opts)

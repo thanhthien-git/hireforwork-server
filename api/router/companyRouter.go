@@ -9,9 +9,10 @@ import (
 
 func setUpCompanyRoutes(router *mux.Router, handler *handlers.Handler) {
 	router.HandleFunc("/companies", handlers.GetCompaniesHandler).Methods("GET")
+	router.HandleFunc("/companies/random", handlers.GetRandomCompanyHandler).Methods("GET")
 	router.HandleFunc("/companies/auth/login", handler.LoginCompany).Methods("POST")
-	router.HandleFunc("/companies/{id}", handlers.GetCompanyByID).Methods("GET")
 	router.HandleFunc("/companies/create", handlers.CreateCompany).Methods("POST")
+	router.HandleFunc("/companies/{id}", handlers.GetCompanyByID).Methods("GET")
 	router.HandleFunc("/companies/get-job/{id}", handlers.GetJobsByCompany).Methods("GET")
 
 	companies := router.PathPrefix("/companies").Subrouter()

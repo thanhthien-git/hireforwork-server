@@ -39,6 +39,18 @@ func GetCompaniesHandler(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(companies)
 }
 
+func GetRandomCompanyHandler(w http.ResponseWriter, r *http.Request) {
+	company, err := service.GetRandomCompany()
+	if err != nil {
+		http.Error(w, "Không có công ty nào", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+
+	json.NewEncoder(w).Encode(company)
+}
 func GetCompanyByID(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 

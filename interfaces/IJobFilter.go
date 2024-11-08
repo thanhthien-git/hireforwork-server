@@ -13,6 +13,7 @@ type IJobFilter struct {
 	JobRequirement  []string `json:"jobRequirement"`
 	JobCategory     []string `json:"jobCategory"`
 	JobLevel        string   `json:"jobLevel"`
-	IsHot           bool     `json:"isHot"`
 	Query           string   `json:"query"`
+	IsHot           bool     `json:"isHot"`
+	IsExpire        bool     `json:"isExpire"`
 }

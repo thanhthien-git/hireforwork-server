@@ -106,6 +106,34 @@ func GetCompanyByID(companyID string) (models.Company, error) {
 	return company, nil
 }
 
+func GetRandomCompany() (models.Company, error) {
+	var company models.Company
+	pipeline := mongo.Pipeline{
+		{
+			{"$match", bson.D{{"isDeleted", false}}},
+		},
+		{
+			{"$sample", bson.D{{"size", 1}}},
+		},
+	}
+
+	cursor, err := companyCollection.Aggregate(context.Background(), pipeline)
+	if err != nil {
+		return company, err
+	}
+	defer cursor.Close(context.Background())
+
+	if cursor.Next(context.Background()) {
+		if err := cursor.Decode(&company); err != nil {
+			return company, err
+		}
+	} else {
+		return company, mongo.ErrNoDocuments
+	}
+
+	return company, nil
+}
+
 func CreateCompany(company models.Company) (models.Company, error) {
 
 	result, err := companyCollection.InsertOne(context.Background(), company)
