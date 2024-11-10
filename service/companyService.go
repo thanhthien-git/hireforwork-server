@@ -289,18 +289,59 @@ func DeleteJobByID(jobID []string) error {
 	if err != nil {
 		return errors.New("Bạn không thuộc bộ phận này")
 	}
-
 	return nil
 }
 
-func GetCareersApplyJob(companyID string) ([]bson.M, error) {
+func GetCareersApplyJob(companyID string, filter interfaces.IJobApplicationFilter) (map[string]interface{}, error) {
 	id, _ := primitive.ObjectIDFromHex(companyID)
 
+	skip := (filter.Page - 1) * filter.PageSize
+	limit := filter.PageSize
+
+	filterStage := bson.M{}
+
+	matchStage := bson.M{
+		"companyID": id,
+		"isDeleted": false,
+	}
+	//filter by date
+	if filter.CreateFrom != "" && filter.CreateTo != "" {
+		createFromTime, _ := time.Parse("2006-01-02", filter.CreateFrom)
+		createToTime, _ := time.Parse("2006-01-02", filter.CreateTo)
+
+		createFromTime = time.Date(createFromTime.Year(), createFromTime.Month(), createFromTime.Day(), 0, 0, 0, 0, time.UTC)
+		createToTime = time.Date(createToTime.Year(), createToTime.Month(), createToTime.Day(), 23, 59, 59, 0, time.UTC)
+
+		matchStage["createAt"] = bson.M{
+			"$gte": primitive.NewDateTimeFromTime(createFromTime),
+			"$lte": primitive.NewDateTimeFromTime(createToTime),
+		}
+	}
+	//filter by status
+	if filter.Status != "" {
+		matchStage["status"] = filter.Status
+	}
+	//filter by mail
+	if filter.CareerEmail != " " {
+		filterStage["careerDetail.careerEmail"] = bson.M{
+			"$regex":   filter.CareerEmail,
+			"$options": "i",
+		}
+	}
+	//filter by level
+	if filter.JobLevel != "" {
+		filterStage["jobDetail.jobLevel"] = filter.JobLevel
+	}
+	//filter by jobTitle
+	if filter.JobTitle != " " {
+		filterStage["jobDetail.jobTitle"] = bson.M{
+			"$regex":   filter.JobTitle,
+			"$options": "i",
+		}
+	}
+
 	pipeline := mongo.Pipeline{
-		{{"$match", bson.D{
-			{"companyID", id},
-			{"isDeleted", false},
-		}}},
+		{{"$match", matchStage}},
 		{{"$lookup", bson.D{
 			{"from", "Job"},
 			{"localField", "jobID"},
@@ -317,6 +358,8 @@ func GetCareersApplyJob(companyID string) ([]bson.M, error) {
 			{"jobDetail", bson.D{{"$ne", bson.A{}}}},
 			{"jobDetail.isDeleted", false},
 		}}},
+		///filter stage here
+		{{"$match", filterStage}},
 		{{"$project", bson.D{
 			{"_id", 1},
 			{"jobID", 1},
@@ -330,17 +373,24 @@ func GetCareersApplyJob(companyID string) ([]bson.M, error) {
 			{"jobRequirement", bson.D{{"$arrayElemAt", bson.A{"$jobDetail.jobRequirement", 0}}}},
 			{"jobLevel", bson.D{{"$arrayElemAt", bson.A{"$jobDetail.jobLevel", 0}}}},
 		}}},
+		{{"$skip", skip}},
+		{{"$limit", limit}},
 	}
 	cursor, err := careerApplyJob.Aggregate(context.TODO(), pipeline)
 	if err != nil {
-		return nil, errors.New("Chúng tôi đã cố gắng hết sức")
+		return nil, err
 	}
 	defer cursor.Close(context.TODO())
 	var result []bson.M
 	if err := cursor.All(context.TODO(), &result); err != nil {
 		return nil, err
 	}
-	return result, nil
+
+	response := map[string]interface{}{
+		"docs": result,
+		"page": filter.Page,
+	}
+	return response, nil
 }
 
 func GetStatics(id primitive.ObjectID) (bson.M, error) {

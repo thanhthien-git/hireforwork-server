@@ -76,7 +76,6 @@ func GetJob(page, pageSize int, filter interfaces.IJobFilter) (bson.M, error) {
 			{"jobSalaryMax": bson.M{"$lte": filter.SalaryTo}},
 		}
 	}
-
 	//filter by category
 	if len(filter.JobCategory) > 0 {
 		matchOption["jobCategory"] = bson.M{"$in": filter.JobCategory}

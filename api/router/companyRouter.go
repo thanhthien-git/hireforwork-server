@@ -18,8 +18,8 @@ func setUpCompanyRoutes(router *mux.Router, handler *handlers.Handler) {
 
 	companies := router.PathPrefix("/companies").Subrouter()
 	companies.Use(middleware.JWTMiddleware(handler.AuthService))
-	companies.HandleFunc("/get-applier/{id}", handlers.GetCareerApply).Methods("GET")
-	companies.HandleFunc("/get-static/{id}", handlers.GetStatics).Methods("GET")
+	companies.HandleFunc("/{id}/get-applier", handlers.GetCareerApply).Methods("GET")
+	companies.HandleFunc("/{id}/get-static}", handlers.GetStatics).Methods("GET")
 	companies.HandleFunc("/{id}", handlers.DeleteCompanyByID).Methods("DELETE")
 	companies.HandleFunc("/{id}/update", handlers.UpdateCompanyByID).Methods("POST")
 	companies.HandleFunc("/{id}/upload-cover", handlers.UploadCompanyCover).Methods("POST")
