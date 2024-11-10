@@ -12,5 +12,6 @@ type CareerApplyJob struct {
 	CompanyID primitive.ObjectID `bson:"companyID" json:"companyID"`
 	CreateAt  primitive.DateTime `bson:"createAt" json:"createAt"`
 	IsDeleted bool               `bson:"isDeleted" json:"isDeleted"`
+	IsChange  bool               `bson:"isChange" json:"isChange"`
 	Status    string             `bson:"status" json:"status"`
 }

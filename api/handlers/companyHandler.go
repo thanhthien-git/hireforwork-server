@@ -314,3 +314,25 @@ func UploadCompanyIMG(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 	fmt.Fprintf(w, `{"url": "%s"}`, url)
 }
+
+func ChangeResumeStatusHandler(w http.ResponseWriter, r *http.Request) {
+	type ChangeStatusRequest struct {
+		ResumeID string `json:"_id"`
+		Status   string `json:"status"`
+	}
+
+	var req ChangeStatusRequest
+	err := json.NewDecoder(r.Body).Decode(&req)
+	if err != nil {
+		http.Error(w, "Vui lòng thử lại sau", http.StatusBadRequest)
+		return
+	}
+	err = service.ChangeResumeStatus(req.ResumeID, req.Status)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte("Cập nhập thành công!"))
+
+}

@@ -71,9 +71,12 @@ func GetJob(page, pageSize int, filter interfaces.IJobFilter) (bson.M, error) {
 	}
 	//filter by salary
 	if filter.SalaryFrom != 0 && filter.SalaryTo != 0 {
-		matchOption["jobSalaryMin"] = bson.M{"$gte": filter.SalaryFrom}
-		matchOption["jobSalaryMax"] = bson.M{"$lte": filter.SalaryTo}
+		matchOption["$and"] = []bson.M{
+			{"jobSalaryMin": bson.M{"$gte": filter.SalaryFrom}},
+			{"jobSalaryMax": bson.M{"$lte": filter.SalaryTo}},
+		}
 	}
+
 	//filter by category
 	if len(filter.JobCategory) > 0 {
 		matchOption["jobCategory"] = bson.M{"$in": filter.JobCategory}
@@ -87,8 +90,9 @@ func GetJob(page, pageSize int, filter interfaces.IJobFilter) (bson.M, error) {
 	if len(filter.JobRequirement) > 0 {
 		matchOption["jobRequirement"] = bson.M{"$in": filter.JobRequirement}
 	}
+	//filter by hot
 	if filter.IsHot {
-		matchOption["isHot"] = true
+		matchOption["isHot"] = filter.IsHot
 	}
 	//filter by job level
 	if filter.JobLevel != "" {
@@ -266,6 +270,7 @@ func ApplyForJob(request interfaces.IJobApply) error {
 		CareerCV:  request.CareerCV,
 		IsDeleted: false,
 		Status:    constants.PENDING,
+		IsChange:  false,
 		CompanyID: companyID,
 	}
 

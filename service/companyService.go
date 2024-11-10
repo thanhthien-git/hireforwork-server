@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"errors"
+	"fmt"
 	"hireforwork-server/interfaces"
 	"hireforwork-server/models"
 	"log"
@@ -323,6 +324,8 @@ func GetCareersApplyJob(companyID string) ([]bson.M, error) {
 			{"careerEmail", bson.D{{"$arrayElemAt", bson.A{"$careerDetail.careerEmail", 0}}}},
 			{"status", 1},
 			{"createAt", 1},
+			{"careerCV", 1},
+			{"isChange", 1},
 			{"jobTitle", bson.D{{"$arrayElemAt", bson.A{"$jobDetail.jobTitle", 0}}}},
 			{"jobRequirement", bson.D{{"$arrayElemAt", bson.A{"$jobDetail.jobRequirement", 0}}}},
 			{"jobLevel", bson.D{{"$arrayElemAt", bson.A{"$jobDetail.jobLevel", 0}}}},
@@ -398,5 +401,35 @@ func UploadCompanyImage(link string, id string) error {
 	if res.Err() != nil {
 		return res.Err()
 	}
+	return nil
+}
+
+func ChangeResumeStatus(resumeID string, status string) error {
+	_id, _ := primitive.ObjectIDFromHex(resumeID)
+
+	update := bson.M{
+		"$set": bson.M{
+			"status":   status,
+			"isChange": true,
+		},
+	}
+
+	result, err := careerApplyJob.UpdateOne(
+		context.Background(),
+		bson.M{
+			"_id":      _id,
+			"isChange": bson.M{"$ne": true},
+		},
+		update,
+	)
+
+	if err != nil {
+		return err
+	}
+
+	if result.MatchedCount == 0 {
+		return fmt.Errorf("Không thể thay đổi trạng thái hoặc trạng thái đã thay đổi")
+	}
+
 	return nil
 }

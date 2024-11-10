@@ -132,7 +132,6 @@ func GetSuggestJobs(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-
 }
 
 func GetJobByID(w http.ResponseWriter, r *http.Request) {

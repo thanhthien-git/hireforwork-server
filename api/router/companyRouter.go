@@ -8,6 +8,7 @@ import (
 )
 
 func setUpCompanyRoutes(router *mux.Router, handler *handlers.Handler) {
+	// Public routes
 	router.HandleFunc("/companies", handlers.GetCompaniesHandler).Methods("GET")
 	router.HandleFunc("/companies/random", handlers.GetRandomCompanyHandler).Methods("GET")
 	router.HandleFunc("/companies/auth/login", handler.LoginCompany).Methods("POST")
@@ -23,4 +24,5 @@ func setUpCompanyRoutes(router *mux.Router, handler *handlers.Handler) {
 	companies.HandleFunc("/{id}/update", handlers.UpdateCompanyByID).Methods("POST")
 	companies.HandleFunc("/{id}/upload-cover", handlers.UploadCompanyCover).Methods("POST")
 	companies.HandleFunc("/{id}/upload-img", handlers.UploadCompanyIMG).Methods("POST")
+	companies.HandleFunc("/change-application-status", handlers.ChangeResumeStatusHandler).Methods("POST")
 }
