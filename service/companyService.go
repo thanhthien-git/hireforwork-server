@@ -222,7 +222,7 @@ func GetCareersByJobID(jobID string, companyID string) ([]models.UserInfo, error
 	return applicants, nil
 }
 
-func GetJobsByCompanyID(companyID string, page int, pageSize int) (models.PaginateDocs[models.Jobs], error) {
+func GetJobsByCompanyID(companyID string, page int, pageSize int, filter interfaces.IJobFilter) (models.PaginateDocs[models.Jobs], error) {
 
 	companyObjectID, _ := primitive.ObjectIDFromHex(companyID)
 
@@ -236,17 +236,47 @@ func GetJobsByCompanyID(companyID string, page int, pageSize int) (models.Pagina
 
 	skip := (page - 1) * pageSize
 
-	filter := bson.M{"isDeleted": false, "companyID": companyObjectID}
+	filterOption := bson.M{"isDeleted": false, "companyID": companyObjectID}
+
+	if filter.JobTitle != "" {
+		filterOption["jobTitle"] = bson.M{"$regex": filter.JobTitle, "$options": "i"}
+	}
+
+	if filter.DateCreateFrom != "" && filter.DateCreateTo != "" {
+		createFromTime, _ := time.Parse("2006-01-02", filter.DateCreateFrom)
+		createToTime, _ := time.Parse("2006-01-02", filter.DateCreateTo)
+
+		createFromTime = time.Date(createFromTime.Year(), createFromTime.Month(), createFromTime.Day(), 0, 0, 0, 0, time.UTC)
+		createToTime = time.Date(createToTime.Year(), createToTime.Month(), createToTime.Day(), 23, 59, 59, 0, time.UTC)
+
+		filterOption["createAt"] = bson.M{
+			"$gte": primitive.NewDateTimeFromTime(createFromTime),
+			"$lte": primitive.NewDateTimeFromTime(createToTime),
+		}
+	}
+
+	if filter.EndDateFrom != "" && filter.EndDateTo != "" {
+		endFromTime, _ := time.Parse("2006-01-02", filter.EndDateFrom)
+		endToTime, _ := time.Parse("2006-01-02", filter.EndDateTo)
+
+		endFromTime = time.Date(endFromTime.Year(), endFromTime.Month(), endFromTime.Day(), 0, 0, 0, 0, time.UTC)
+		endToTime = time.Date(endToTime.Year(), endToTime.Month(), endToTime.Day(), 23, 59, 59, 0, time.UTC)
+
+		filterOption["expireDate"] = bson.M{
+			"$gte": primitive.NewDateTimeFromTime(endFromTime),
+			"$lte": primitive.NewDateTimeFromTime(endToTime),
+		}
+	}
 
 	findOptions := options.Find().SetSkip(int64(skip)).SetLimit(int64(pageSize)).SetSort(bson.D{{"jobTitle", 1}})
 
-	totalDocs, _ := jobCollection.CountDocuments(context.Background(), filter)
+	totalDocs, _ := jobCollection.CountDocuments(context.Background(), filterOption)
 
 	totalPages := int64(math.Ceil(float64(totalDocs) / float64(pageSize)))
 
 	var jobs []models.Jobs
 
-	cursor, err := jobCollection.Find(context.Background(), filter, findOptions)
+	cursor, err := jobCollection.Find(context.Background(), filterOption, findOptions)
 
 	if err != nil {
 		return models.PaginateDocs[models.Jobs]{}, err

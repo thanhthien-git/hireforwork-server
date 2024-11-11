@@ -169,7 +169,15 @@ func GetJobsByCompany(w http.ResponseWriter, r *http.Request) {
 	page, _ := strconv.Atoi(pageStr)
 	pageSize, _ := strconv.Atoi(pageSizeStr)
 
-	jobs, err := service.GetJobsByCompanyID(companyID, page, pageSize)
+	filter := interfaces.IJobFilter{
+		JobTitle:       r.URL.Query().Get("jobTitle"),
+		DateCreateFrom: r.URL.Query().Get("dateCreateFrom"),
+		DateCreateTo:   r.URL.Query().Get("dateCreateTo"),
+		EndDateFrom:    r.URL.Query().Get("endDateFrom"),
+		EndDateTo:      r.URL.Query().Get("endDateTo"),
+	}
+
+	jobs, err := service.GetJobsByCompanyID(companyID, page, pageSize, filter)
 
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)

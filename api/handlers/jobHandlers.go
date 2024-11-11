@@ -66,6 +66,10 @@ func GetJob(w http.ResponseWriter, r *http.Request) {
 func CreateJobHandler(w http.ResponseWriter, r *http.Request) {
 	var job models.Jobs
 	err := json.NewDecoder(r.Body).Decode(&job)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("Lỗi khi tạo mới bài đăng"), http.StatusInternalServerError)
+		return
+	}
 	createJob, err := service.CreateJob(job)
 	if err != nil {
 		http.Error(w, fmt.Sprintf("Lỗi khi tạo mới bài đăng"), http.StatusInternalServerError)

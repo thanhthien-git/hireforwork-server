@@ -197,9 +197,7 @@ func CreateJob(job models.Jobs) (models.Jobs, error) {
 	currentTime := time.Now()
 	job.Id = primitive.NewObjectID()
 	job.CreateAt = primitive.NewDateTimeFromTime(currentTime)
-	job.ExpireDate = primitive.NewDateTimeFromTime(currentTime.AddDate(0, 0, 14))
 	job.IsClosed = false
-	job.IsHot = false
 	result, err := jobCollection.InsertOne(context.Background(), job)
 	fmt.Println(err)
 	if err != nil {
