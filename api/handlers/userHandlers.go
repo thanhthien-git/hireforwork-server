@@ -8,6 +8,7 @@ import (
 	"hireforwork-server/service"
 	"hireforwork-server/utils"
 	"io/ioutil"
+	"log"
 	"net/http"
 	"strconv"
 	"time"
@@ -407,4 +408,16 @@ func ResetPasswordHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.WriteHeader(http.StatusNoContent)
+}
+
+func GetStaticHandler(w http.ResponseWriter, r *http.Request) {
+	staticData := service.GetStatic()
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	if err := json.NewEncoder(w).Encode(staticData); err != nil {
+		// Handle error if encoding fails
+		w.WriteHeader(http.StatusInternalServerError)
+		log.Println("Error encoding response:", err)
+		return
+	}
 }

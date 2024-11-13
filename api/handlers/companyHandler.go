@@ -169,7 +169,15 @@ func GetJobsByCompany(w http.ResponseWriter, r *http.Request) {
 	page, _ := strconv.Atoi(pageStr)
 	pageSize, _ := strconv.Atoi(pageSizeStr)
 
-	jobs, err := service.GetJobsByCompanyID(companyID, page, pageSize)
+	filter := interfaces.IJobFilter{
+		JobTitle:       r.URL.Query().Get("jobTitle"),
+		DateCreateFrom: r.URL.Query().Get("dateCreateFrom"),
+		DateCreateTo:   r.URL.Query().Get("dateCreateTo"),
+		EndDateFrom:    r.URL.Query().Get("endDateFrom"),
+		EndDateTo:      r.URL.Query().Get("endDateTo"),
+	}
+
+	jobs, err := service.GetJobsByCompanyID(companyID, page, pageSize, filter)
 
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -209,9 +217,25 @@ func DeleteJobByID(w http.ResponseWriter, r *http.Request) {
 
 func GetCareerApply(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
-	res, err := service.GetCareersApplyJob(vars["id"])
+	pageStr := r.URL.Query().Get("page")
+	pageSizeStr := r.URL.Query().Get("pageSize")
+	page, _ := strconv.Atoi(pageStr)
+	pageSize, _ := strconv.Atoi(pageSizeStr)
+
+	filter := interfaces.IJobApplicationFilter{
+		Page:        page,
+		PageSize:    pageSize,
+		CareerEmail: r.URL.Query().Get("careerEmail"),
+		JobLevel:    r.URL.Query().Get("jobLevel"),
+		JobTitle:    r.URL.Query().Get("jobTitle"),
+		Status:      r.URL.Query().Get("status"),
+		CreateFrom:  r.URL.Query().Get("createFrom"),
+		CreateTo:    r.URL.Query().Get("createTo"),
+	}
+
+	res, err := service.GetCareersApplyJob(vars["id"], filter)
 	if err != nil {
-		http.Error(w, "Lỗi xảy ra", http.StatusBadRequest)
+		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
