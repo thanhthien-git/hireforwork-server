@@ -360,3 +360,33 @@ func ChangeResumeStatusHandler(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte("Cập nhập thành công!"))
 
 }
+func RequestPasswordCompanyResetHandler(w http.ResponseWriter, r *http.Request) {
+	var req interfaces.PasswordResetRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "Invalid request", http.StatusBadRequest)
+		return
+	}
+
+	code, err := service.RequestPasswordResetCompany(req.Email)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	json.NewEncoder(w).Encode(map[string]string{"code": code})
+}
+
+func ResetPasswordCompanyHandler(w http.ResponseWriter, r *http.Request) {
+	var req interfaces.PasswordReset
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "Invalid request", http.StatusBadRequest)
+		return
+	}
+
+	if err := service.ResetPasswordCompany(req.Email, req.Code, req.NewPassword); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	w.WriteHeader(http.StatusNoContent)
+}

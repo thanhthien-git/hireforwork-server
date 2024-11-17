@@ -15,17 +15,18 @@ type Contact struct {
 }
 
 type Company struct {
-	Id            primitive.ObjectID   `bson:"_id" json:"_id"`
-	CompanyImage  CompanyImage         `bson:"companyImage" json:"companyImage"`
-	CompanyName   string               `bson:"companyName" json:"companyName"`
-	CompanyViewed int                  `bson:"companyViewed" json:"companyViewed"`
-	Contact       Contact              `bson:"contact" json:"contact"`
-	CreateAt      primitive.DateTime   `bson:"createAt" json:"createAt"`
-	Description   string               `bson:"description" json:"description"`
-	EmployeeSize  int                  `bson:"employeeSize" json:"employeeSize"`
-	IsDeleted     bool                 `bson:"isDeleted" json:"isDeleted"`
-	Popularity    int                  `bson:"popularity" json:"popularity"`
-	PostJob       []primitive.ObjectID `bson:"postJob" json:"postJob"`
-	CompanyField  []string             `bson:"companyField" json:"companyField"`
-	Password      string               `bson:"password" json:"password"`
+	Id               primitive.ObjectID   `bson:"_id" json:"_id"`
+	CompanyImage     CompanyImage         `bson:"companyImage" json:"companyImage"`
+	CompanyName      string               `bson:"companyName" json:"companyName"`
+	CompanyViewed    int                  `bson:"companyViewed" json:"companyViewed"`
+	Contact          Contact              `bson:"contact" json:"contact"`
+	CreateAt         primitive.DateTime   `bson:"createAt" json:"createAt"`
+	Description      string               `bson:"description" json:"description"`
+	EmployeeSize     int                  `bson:"employeeSize" json:"employeeSize"`
+	IsDeleted        bool                 `bson:"isDeleted" json:"isDeleted"`
+	Popularity       int                  `bson:"popularity" json:"popularity"`
+	PostJob          []primitive.ObjectID `bson:"postJob" json:"postJob"`
+	CompanyField     []string             `bson:"companyField" json:"companyField"`
+	Password         string               `bson:"password" json:"password"`
+	VerificationCode string               `bson:"verificationCode"`
 }

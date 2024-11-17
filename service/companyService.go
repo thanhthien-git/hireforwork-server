@@ -6,8 +6,10 @@ import (
 	"fmt"
 	"hireforwork-server/interfaces"
 	"hireforwork-server/models"
+	"hireforwork-server/utils"
 	"log"
 	"math"
+	"math/rand"
 	"net/http"
 	"time"
 
@@ -509,6 +511,57 @@ func ChangeResumeStatus(resumeID string, status string) error {
 
 	if result.MatchedCount == 0 {
 		return fmt.Errorf("Không thể thay đổi trạng thái hoặc trạng thái đã thay đổi")
+	}
+
+	return nil
+}
+func RequestPasswordResetCompany(email string) (string, error) {
+	var company models.Company
+
+	err := companyCollection.FindOne(context.Background(), bson.M{"contact.companyEmail": email}).Decode(&company)
+	if err != nil {
+		return "", fmt.Errorf("Không tìm thấy công ty với email %s: %v", email, err)
+	}
+
+	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
+	code := rng.Intn(9000) + 1000
+	verificationCode := fmt.Sprintf("%d", code)
+
+	subject := "Mã xác nhận khôi phục mật khẩu"
+	body := fmt.Sprintf("Mã xác nhận của bạn là: %s", verificationCode)
+	if err := SendEmail(email, subject, body); err != nil {
+		return "", err
+	}
+
+	_, err = companyCollection.UpdateOne(
+		context.Background(),
+		bson.M{"_id": company.Id},
+		bson.M{"$set": bson.M{"verificationCode": verificationCode}},
+	)
+	if err != nil {
+		return "", fmt.Errorf("Lỗi khi cập nhật mã xác nhận: %v", err)
+	}
+
+	return verificationCode, nil
+}
+
+func ResetPasswordCompany(email string, code string, newPassword string) error {
+	var company models.Company
+
+	err := companyCollection.FindOne(context.Background(), bson.M{"contact.companyEmail": email, "verificationCode": code}).Decode(&company)
+	if err != nil {
+		return fmt.Errorf("Sai mã xác nhận: %v", err)
+	}
+
+	hashedPassword := utils.EncodeToSHA(newPassword)
+
+	_, err = companyCollection.UpdateOne(
+		context.Background(),
+		bson.M{"_id": company.Id},
+		bson.M{"$set": bson.M{"password": hashedPassword, "verificationCode": ""}},
+	)
+	if err != nil {
+		return fmt.Errorf("Lỗi khi khôi phục mật khẩu: %v", err)
 	}
 
 	return nil
