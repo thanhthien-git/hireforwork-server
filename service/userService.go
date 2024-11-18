@@ -121,6 +121,14 @@ func DeleteUserByID(careerID string) http.Response {
 }
 
 func CreateUser(user models.User) (models.User, error) {
+
+	if user.Profile.UserCV == nil {
+		user.Profile.UserCV = []string{} // Default to an empty array
+	}
+	if user.Profile.Skills == nil {
+		user.Profile.Skills = []string{} // Default to an empty array
+	}
+
 	// Sử dụng session để đảm bảo tính toàn vẹn của dữ liệu
 	wc := writeconcern.New(writeconcern.WMajority())
 	opts := options.Transaction().SetWriteConcern(wc)

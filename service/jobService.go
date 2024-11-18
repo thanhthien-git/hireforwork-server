@@ -321,12 +321,8 @@ func ApplyForJob(request interfaces.IJobApply) error {
             <p>Cảm ơn bạn đã ứng tuyển công việc trên hệ thống của chúng tôi, nhà tuyển dụng sẽ liên lạc với bạn qua gmail sớm nhất.</p>
             <p>Nhà tuyển dụng sẽ phản hồi bạn sớm nhất thông qua email. Nếu bạn có bất kỳ câu hỏi nào, đừng ngần ngại liên hệ với chúng tôi qua email này.</p>
             <p>Chúc bạn một ngày tuyệt vời!</p>
-            <p>Trân trọng,</p>
-            <p><em>Đội ngũ tuyển dụng tại [Tên Công Ty]</em></p>
-            <div class="footer">
-                <p>Cheers, </p>
-    			<p>The NHIEUViec Team</p>
-            </div>
+            <p>Cheers, </p>
+            <p>The NHIEUViec Team</p>
         </div>
     </body>
     </html>

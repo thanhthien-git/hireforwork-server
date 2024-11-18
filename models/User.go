@@ -18,9 +18,9 @@ type User struct {
 	CareerPicture    string             `bson:"careerPicture,omitempty" json:"careerPicture,omitempty"`
 	CreateAt         primitive.DateTime `bson:"createAt" json:"createAt"`
 	IsDeleted        bool               `bson:"isDeleted" json:"isDeleted"`
-	Languages        []string           `bson:"languages,omitempty" json:"languages,omitempty"`
+	Languages        []string           `bson:"languages,omitempty" json:"languages"`
 	Password         string             `bson:"password" json:"password"`
 	Role             string             `bson:"role" json:"role"`
-	Profile          Profile            `bson:"profile,omitempty" json:"profile,omitempty"`
+	Profile          Profile            `bson:"profile" json:"profile"`
 	VerificationCode string             `bson:"verificationCode"`
 }
