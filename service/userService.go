@@ -311,19 +311,14 @@ func CareerViewedJob(careerID string, jobID string) (models.CareerViewedJob, err
 
 }
 
-func GetSavedJobByCareerID(careerID string) (models.PaginateDocs[models.Jobs], error) {
+func GetSavedJobByCareerID(careerID string) models.PaginateDocs[models.Jobs] {
 	var saveJob []models.Jobs
 	careerObjID, _ := primitive.ObjectIDFromHex(careerID)
-
+	fmt.Println(careerObjID)
 	filter := bson.M{"careerID": careerObjID}
 
 	var career models.CareerSaveJob
 	err := careerSaveJob.FindOne(context.Background(), filter).Decode(&career)
-	if err != nil {
-		if err == mongo.ErrNoDocuments {
-			return models.PaginateDocs[models.Jobs]{}, fmt.Errorf("Bạn chưa lưu công việc nào", careerID)
-		}
-	}
 
 	jobFilter := bson.M{
 		"_id": bson.M{
@@ -337,13 +332,13 @@ func GetSavedJobByCareerID(careerID string) (models.PaginateDocs[models.Jobs], e
 
 	cursor, err := jobCollection.Find(context.Background(), jobFilter)
 	if err != nil {
-		return models.PaginateDocs[models.Jobs]{}, fmt.Errorf("Đã có lỗi xảy ra")
+		return models.PaginateDocs[models.Jobs]{}
 	}
 	defer cursor.Close(context.Background())
 
 	if err = cursor.All(context.Background(), &saveJob); err != nil {
 		log.Printf("Error parsing documents: %v", err)
-		return models.PaginateDocs[models.Jobs]{}, err
+		return models.PaginateDocs[models.Jobs]{}
 	}
 
 	result := models.PaginateDocs[models.Jobs]{
@@ -352,7 +347,7 @@ func GetSavedJobByCareerID(careerID string) (models.PaginateDocs[models.Jobs], e
 		CurrentPage: int64(1),
 		TotalPage:   totalPage,
 	}
-	return result, nil
+	return result
 }
 
 func GetViewedJobByCareerID(careerID string) ([]models.ViewedJob, error) {
@@ -428,37 +423,141 @@ func RequestPasswordReset(email string) (string, error) {
 	var user models.User
 	err := userCollection.FindOne(context.Background(), bson.M{"careerEmail": email}).Decode(&user)
 	if err != nil {
-		return "", fmt.Errorf("no user found with email %s: %v", email, err)
+		return "", fmt.Errorf("Không tìm thấy người dùng với email %s: %v", email, err)
 	}
 
 	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
 	code := rng.Intn(9000) + 1000
-	user.VerificationCode = fmt.Sprintf("%d", code)
+	verificationCode := fmt.Sprintf("%d", code)
+
 	subject := "Mã xác nhận khôi phục mật khẩu"
-	body := fmt.Sprintf("Mã xác nhận của bạn là: %s", user.VerificationCode)
+	body := fmt.Sprintf("Mã xác nhận của bạn là: %s", verificationCode)
 	if err := SendEmail(email, subject, body); err != nil {
-		return "", err
+		return "", fmt.Errorf("Lỗi khi gửi email: %v", err)
 	}
-	_, err = userCollection.UpdateOne(context.Background(), bson.M{"_id": user.Id}, bson.M{"$set": bson.M{"verificationCode": user.VerificationCode}})
+
+	_, err = userCollection.UpdateOne(
+		context.Background(),
+		bson.M{"_id": user.Id},
+		bson.M{"$set": bson.M{"verificationCode": verificationCode}},
+	)
 	if err != nil {
-		return "", fmt.Errorf("Lỗi khi update mã xác nhận: %v", err)
+		return "", fmt.Errorf("Lỗi khi tạo mã xác nhận: %v", err)
 	}
 
-	return user.VerificationCode, nil
+	return verificationCode, nil
 }
-
 func ResetPassword(email string, code string, newPassword string) error {
 	var user models.User
+
+	// Kiểm tra mã xác nhận
 	err := userCollection.FindOne(context.Background(), bson.M{"careerEmail": email, "verificationCode": code}).Decode(&user)
 	if err != nil {
-		return fmt.Errorf("Sai mã xác nhận: %v", err)
+		return fmt.Errorf("Sai mã xác nhận hoặc email không hợp lệ: %v", err)
 	}
 	hashedPassword := utils.EncodeToSHA(newPassword)
-
-	_, err = userCollection.UpdateOne(context.Background(), bson.M{"_id": user.Id}, bson.M{"$set": bson.M{"password": hashedPassword, "verificationCode": ""}})
+	_, err = userCollection.UpdateOne(
+		context.Background(),
+		bson.M{"_id": user.Id},
+		bson.M{
+			"$set":   bson.M{"password": hashedPassword},
+			"$unset": bson.M{"verificationCode": ""},
+		},
+	)
 	if err != nil {
-		return fmt.Errorf("Lỗi khi cố lấy lại mật khẩu: %v", err)
+		return fmt.Errorf("Lỗi khi cập nhật mật khẩu mới: %v", err)
 	}
 
 	return nil
+}
+
+func GetAppliedJob(id string, page int, pageSize int) ([]bson.M, error) {
+	_id, _ := primitive.ObjectIDFromHex(id)
+
+	if page < 1 {
+		page = 1
+	}
+	if pageSize < 1 {
+		pageSize = 10
+	}
+
+	skip := (page - 1) * pageSize
+
+	pipeline := mongo.Pipeline{
+		{{"$match", bson.D{
+			{"careerID", _id},
+			{"isDeleted", false},
+		}}},
+		{{"$lookup", bson.D{
+			{"from", "Job"},
+			{"localField", "jobID"},
+			{"foreignField", "_id"},
+			{"as", "jobDetails"},
+		}}},
+		{{"$unwind", bson.D{
+			{"path", "$jobDetails"},
+			{"preserveNullAndEmptyArrays", false},
+		}}},
+		{{
+			"$lookup", bson.D{
+				{"from", "Company"},
+				{"localField", "jobDetails.companyID"},
+				{"foreignField", "_id"},
+				{"as", "companyDetails"},
+			},
+		}},
+		{{"$unwind", bson.D{
+			{"path", "$companyDetails"},
+			{"preserveNullAndEmptyArrays", false},
+		}}},
+		{{"$project", bson.D{
+			{"_id", 1},
+			{"careerID", 1},
+			{"jobTitle", "$jobDetails.jobTitle"},
+			{"jobID", "$jobDetails._id"},
+			{"jobRequirement", "$jobDetails.jobRequirement"},
+			{"jobSalaryMin", "$jobDetails.jobSalaryMin"},
+			{"jobSalaryMax", "$jobDetails.jobSalaryMax"},
+			{"companyImage", "$companyDetails.companyImage.imageURL"},
+			{"companyName", "$companyDetails.companyName"},
+			{"isDeleted", 1},
+			{"status", 1},
+		}}},
+		//facet stage
+		bson.D{
+			{"$facet", bson.D{
+				{"totalDocs", bson.A{
+					bson.D{{"$count", "totalDocs"}},
+				}},
+				{"docs", bson.A{
+					bson.D{{"$skip", skip}},
+					bson.D{{"$limit", pageSize}},
+				}},
+			}},
+		},
+		bson.D{
+			{"$addFields", bson.D{
+				{"page", page},
+			}},
+		},
+		bson.D{
+			{"$project", bson.D{
+				{"totalDocs", bson.D{{"$arrayElemAt", bson.A{"$totalDocs.totalDocs", 0}}}},
+				{"docs", 1},
+				{"page", page},
+			}},
+		},
+	}
+
+	cursor, err := careerApplyJob.Aggregate(context.Background(), pipeline)
+	if err != nil {
+		return nil, err
+	}
+	defer cursor.Close(context.Background())
+	var results []bson.M
+	if err := cursor.All(context.Background(), &results); err != nil {
+		return nil, err
+	}
+
+	return results, nil
 }

@@ -337,12 +337,7 @@ func GetSavedJobs(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	id := vars["id"]
 
-	savedJobs, err := service.GetSavedJobByCareerID(id)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
+	savedJobs := service.GetSavedJobByCareerID(id)
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(savedJobs)
@@ -420,4 +415,22 @@ func GetStaticHandler(w http.ResponseWriter, r *http.Request) {
 		log.Println("Error encoding response:", err)
 		return
 	}
+}
+
+func GetAppliedJob(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	id := vars["id"]
+	query := r.URL.Query()
+	page, err := strconv.Atoi(query.Get("page"))
+	pageSize, err := strconv.Atoi(query.Get("pageSize"))
+
+	result, err := service.GetAppliedJob(id, page, pageSize)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(result)
 }

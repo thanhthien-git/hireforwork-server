@@ -16,6 +16,7 @@ type Jobs struct {
 	JobSalaryMin     int64              `bson:"jobSalaryMin" json:"jobSalaryMin"`
 	JobSalaryMax     int64              `bson:"jobSalaryMax" json:"jobSalaryMax"`
 	JobRequirement   []string           `bson:"jobRequirement" json:"jobRequirement"`
+	JobCategory      []string           `bson:"jobCategory" json:"jobCategory"`
 	WorkingLocation  []string           `bson:"workingLocation" json:"workingLocation"`
 	IsHot            bool               `bson:"isHot" json:"isHot"`
 	IsClosed         bool               `bson:"isClosed" json:"isClosed"`
@@ -23,7 +24,6 @@ type Jobs struct {
 	CreateAt         primitive.DateTime `bson:"createAt" json:"createAt"`
 	ExpireDate       primitive.DateTime `bson:"expireDate" json:"expireDate"`
 	CompanyID        primitive.ObjectID `bson:"companyID" json:"companyID"`
-	JobCategory      []string           `bson:"jobCategory" json:"jobCategory"`
 	JobTech          []string           `bson:"jobTech" json:"jobTech"`
 	Quantity         int64              `bson:"quantity" json:"quantity"`
 	JobDescription   string             `bson:"jobDescription" json:"jobDescription"`

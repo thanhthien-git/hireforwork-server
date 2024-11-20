@@ -22,7 +22,7 @@ import (
 func GetJob(page, pageSize int, filter interfaces.IJobFilter) (bson.M, error) {
 
 	skip := (page - 1) * pageSize
-	matchStage := bson.M{"isDeleted": false}
+	matchStage := bson.M{"isDeleted": false, "isClosed": false}
 
 	facetStage := bson.D{
 		{"$facet", bson.D{
@@ -78,7 +78,7 @@ func GetJob(page, pageSize int, filter interfaces.IJobFilter) (bson.M, error) {
 	}
 	//filter by category
 	if len(filter.JobCategory) > 0 {
-		matchOption["jobCategory"] = bson.M{"$in": filter.JobCategory}
+		matchOption["jobCategory"] = bson.M{"$all": filter.JobCategory}
 	}
 	//filter by working location
 	if len(filter.WorkingLocation) > 0 {
