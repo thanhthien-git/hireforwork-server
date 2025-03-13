@@ -8,6 +8,8 @@ import (
 	"net/http"
 	"strconv"
 
+	"hireforwork-server/db"
+
 	"github.com/gorilla/mux"
 )
 
@@ -15,13 +17,18 @@ type CategoryHandler struct {
 	CategoryService *service.CategoryService
 }
 
-func NewCategoryHandler() *CategoryHandler {
+func NewCategoryHandler(dbInstance *db.DB) *CategoryHandler {
 	return &CategoryHandler{
-		CategoryService: nil,
+		CategoryService: service.NewCategoryService(dbInstance),
 	}
 }
 
 func (h *CategoryHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	if h.CategoryService == nil {
+		http.Error(w, "Category service not initialized", http.StatusInternalServerError)
+		return
+	}
+
 	handlerFunc := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch {
 		case r.URL.Path == "/category" && r.Method == http.MethodGet:

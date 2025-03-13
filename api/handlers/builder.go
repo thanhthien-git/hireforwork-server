@@ -115,23 +115,33 @@ func createHandler(config HandlerConfig, services *service.AppServices, db *db.D
 	// Get the service instance using Dependency Injection
 	var serviceInstance interface{}
 	if services != nil {
-		if service := services.GetService(config.ServiceName); service != nil {
-			serviceInstance = service
-		} else if config.FallbackCreate != nil {
+		serviceInstance = services.GetService(config.ServiceName)
+		if serviceInstance == nil && config.FallbackCreate != nil {
 			serviceInstance = config.FallbackCreate(db)
 		}
 	}
 
 	// Set the service field using reflection
-	serviceField := handlerValue.Elem().FieldByName(config.ServiceType.Name())
-	if serviceField.IsValid() {
-		serviceField.Set(reflect.ValueOf(serviceInstance))
+	if serviceInstance != nil {
+		serviceField := handlerValue.Elem().FieldByName(config.ServiceType.Name())
+		if serviceField.IsValid() && serviceField.CanSet() {
+			serviceField.Set(reflect.ValueOf(serviceInstance))
+		} else {
+			// If the field is not found or cannot be set, try to find it by type
+			for i := 0; i < handlerValue.Elem().NumField(); i++ {
+				field := handlerValue.Elem().Field(i)
+				if field.Type() == config.ServiceType {
+					field.Set(reflect.ValueOf(serviceInstance))
+					break
+				}
+			}
+		}
 	}
 
 	// Set auth service if required (Conditional Dependency Injection)
 	if config.RequiresAuth {
 		authField := handlerValue.Elem().FieldByName("AuthService")
-		if authField.IsValid() {
+		if authField.IsValid() && authField.CanSet() {
 			authField.Set(reflect.ValueOf(auth.NewAuthService(db)))
 		}
 	}

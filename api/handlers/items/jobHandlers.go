@@ -3,6 +3,7 @@ package handlers
 import (
 	"encoding/json"
 	"fmt"
+	"hireforwork-server/db"
 	"hireforwork-server/interfaces"
 	"hireforwork-server/models"
 	"hireforwork-server/service/modules/jobs"
@@ -17,19 +18,46 @@ type JobHandler struct {
 	JobService *jobs.JobService
 }
 
+func NewJobHandler(dbInstance *db.DB) *JobHandler {
+	return &JobHandler{
+		JobService: jobs.NewJobService(dbInstance),
+	}
+}
+
 func (h *JobHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	handlerFunc := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		switch {
-		case r.URL.Path == "/jobs" && r.Method == http.MethodGet:
-			h.GetJob(w, r)
-		case r.URL.Path == "/jobs" && r.Method == http.MethodPost:
-			h.CreateJobHandler(w, r)
-		case r.URL.Path == "/jobs" && r.Method == http.MethodPut:
-			h.UpdateJobHandler(w, r)
-		case r.URL.Path == "/jobs/suggest" && r.Method == http.MethodGet:
-			h.GetSuggestJobs(w, r)
+		path := r.URL.Path
+		vars := mux.Vars(r)
+
+		// Remove trailing slash if present
+		if len(path) > 1 && path[len(path)-1] == '/' {
+			path = path[:len(path)-1]
+		}
+
+		// Handle the base path
+		if path == "/jobs" || path == "/jobs/" || path == "/" || path == "" {
+			switch r.Method {
+			case http.MethodGet:
+				h.GetJob(w, r)
+			case http.MethodPost:
+				h.CreateJobHandler(w, r)
+			case http.MethodPut:
+				h.UpdateJobHandler(w, r)
+			default:
+				http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+			}
+			return
+		}
+
+		// Handle other paths
+		switch path {
+		case "/jobs/suggest":
+			if r.Method == http.MethodGet {
+				h.GetSuggestJobs(w, r)
+			} else {
+				http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+			}
 		default:
-			vars := mux.Vars(r)
 			if _, ok := vars["id"]; ok && r.Method == http.MethodGet {
 				h.GetJobByID(w, r)
 			} else {

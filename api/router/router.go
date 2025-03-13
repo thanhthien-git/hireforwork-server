@@ -19,10 +19,10 @@ Design Patterns Used in Router Setup:
   - Provides a single source of truth for route definitions
 */
 type RouteConfig struct {
-	Path       string
-	Handler    string
-	Methods    []string
-	Middleware []mux.MiddlewareFunc
+	Path         string
+	Handler      string
+	Methods      []string
+	RequiresAuth bool
 }
 
 // RouteRegistry implements the Registry Pattern
@@ -36,7 +36,7 @@ type RouteRegistry struct {
 // NewRouteRegistry creates a new route registry with predefined routes
 // - Implements the Factory Pattern for creating the registry
 // - Routes are defined declaratively rather than imperatively
-func NewRouteRegistry(dbInstance *db.DB) *RouteRegistry {
+func NewRouteRegistry() *RouteRegistry {
 	return &RouteRegistry{
 		routes: []RouteConfig{
 			{
@@ -45,12 +45,10 @@ func NewRouteRegistry(dbInstance *db.DB) *RouteRegistry {
 				Methods: []string{"GET"},
 			},
 			{
-				Path:    "/jobs",
-				Handler: "job",
-				Methods: []string{"POST", "PUT"},
-				Middleware: []mux.MiddlewareFunc{
-					middleware.JWTMiddleware(auth.NewAuthService(dbInstance)),
-				},
+				Path:         "/jobs",
+				Handler:      "job",
+				Methods:      []string{"POST", "PUT"},
+				RequiresAuth: true,
 			},
 			{
 				Path:    "/companies",
@@ -112,7 +110,26 @@ func (b *RouterBuilder) BuildRoutes(registry *RouteRegistry) *mux.Router {
 		// Uses the HandlerBuilder (another Builder Pattern implementation)
 		handler := handlers.NewHandlerBuilder(b.services, route.Handler, b.db).Build()
 		if handler != nil {
-			b.router.PathPrefix(route.Path).Handler(handler)
+			// Create a subrouter for this specific route
+			r := b.router.PathPrefix(route.Path).Subrouter()
+
+			// Apply auth middleware if required
+			if route.RequiresAuth {
+				authService := auth.NewAuthService(b.db)
+				r.Use(middleware.JWTMiddleware(authService))
+			}
+
+			// Handle the route with specified methods
+			if len(route.Methods) > 0 {
+				r.Handle("", handler).Methods(route.Methods...)
+			} else {
+				r.Handle("", handler)
+			}
+
+			// Handle the root path as well
+			if route.Path != "/" {
+				r.Handle("/", handler)
+			}
 		}
 	}
 	return b.router
@@ -125,7 +142,7 @@ func (b *RouterBuilder) BuildRoutes(registry *RouteRegistry) *mux.Router {
   - Makes it easy to use the router system
 */
 func SetUpRouter(services *service.AppServices, dbInstance *db.DB) *mux.Router {
-	registry := NewRouteRegistry(dbInstance)
+	registry := NewRouteRegistry()
 	builder := NewRouterBuilder(services, dbInstance)
 	return builder.BuildRoutes(registry)
 }
