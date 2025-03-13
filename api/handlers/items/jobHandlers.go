@@ -35,7 +35,7 @@ func (h *JobHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 
 		// Handle the base path
-		if path == "/jobs" || path == "/jobs/" || path == "/" || path == "" {
+		if path == "/jobs" || path == "/jobs/" || path == "/" || path == "" || path == "/api/jobs" || path == "/api/jobs/" {
 			switch r.Method {
 			case http.MethodGet:
 				h.GetJob(w, r)
@@ -51,7 +51,7 @@ func (h *JobHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 		// Handle other paths
 		switch path {
-		case "/jobs/suggest":
+		case "/jobs/suggest", "/api/jobs/suggest":
 			if r.Method == http.MethodGet {
 				h.GetSuggestJobs(w, r)
 			} else {

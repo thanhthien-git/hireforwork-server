@@ -121,13 +121,11 @@ func (b *RouterBuilder) BuildRoutes(registry *RouteRegistry) *mux.Router {
 
 			// Handle the route with specified methods
 			if len(route.Methods) > 0 {
+				// Handle both with and without trailing slash
 				r.Handle("", handler).Methods(route.Methods...)
+				r.Handle("/", handler).Methods(route.Methods...)
 			} else {
 				r.Handle("", handler)
-			}
-
-			// Handle the root path as well
-			if route.Path != "/" {
 				r.Handle("/", handler)
 			}
 		}
