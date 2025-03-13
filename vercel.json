@@ -1,26 +1,72 @@
 {
   "version": 2,
-  "buildCommand": "go build -o api/main",
+  "buildCommand": "go build -o main",
   "builds": [
     {
-      "src": "api/*.go",
+      "src": "*.go",
       "use": "@vercel/go"
     }
   ],
   "routes": [
     {
       "src": "/jobs",
-      "methods": ["GET"],
-      "dest": "/api/main"
+      "dest": "/main"
     },
     {
-      "src": "/jobs",
-      "methods": ["POST", "PUT"],
-      "dest": "/api/main"
+      "src": "/companies",
+      "dest": "/main"
+    },
+    {
+      "src": "/careers",
+      "dest": "/main"
+    },
+    {
+      "src": "/tech",
+      "dest": "/main"
+    },
+    {
+      "src": "/field",
+      "dest": "/main"
+    },
+    {
+      "src": "/category",
+      "dest": "/main"
+    },
+    {
+      "src": "/admin",
+      "dest": "/main"
+    },
+    {
+      "src": "/jobs/(.*)",
+      "dest": "/main"
+    },
+    {
+      "src": "/companies/(.*)",
+      "dest": "/main"
+    },
+    {
+      "src": "/careers/(.*)",
+      "dest": "/main"
+    },
+    {
+      "src": "/tech/(.*)",
+      "dest": "/main"
+    },
+    {
+      "src": "/field/(.*)",
+      "dest": "/main"
+    },
+    {
+      "src": "/category/(.*)",
+      "dest": "/main"
+    },
+    {
+      "src": "/admin/(.*)",
+      "dest": "/main"
     },
     {
       "src": "/(.*)",
-      "dest": "/api/main"
+      "dest": "/main"
     }
   ]
 }
