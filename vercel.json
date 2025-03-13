@@ -1,16 +1,18 @@
 {
   "version": 2,
-  "buildCommand": "go build -o handler",
   "builds": [
     {
-      "src": "*.go",
+      "src": "main.go",
       "use": "@vercel/go"
     }
   ],
   "routes": [
     {
       "src": "/(.*)",
-      "dest": "/handler"
+      "dest": "main.go"
     }
-  ]
+  ],
+  "env": {
+    "GO_BUILD_FLAGS": "-ldflags '-s -w'"
+  }
 }
