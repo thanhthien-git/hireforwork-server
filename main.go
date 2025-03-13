@@ -45,10 +45,10 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	appServices := service.NewAppServices(container)
 
 	// Create router
-	router := api.SetUpRouter(appServices, database)
+	routerInstance := api.SetUpRouter(appServices, database)
 
 	// Enable CORS with a single line
-	handler := enableCORS().Handler(router)
+	handler := enableCORS().Handler(routerInstance)
 
 	// Serve the request
 	handler.ServeHTTP(w, r)
