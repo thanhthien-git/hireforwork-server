@@ -5,10 +5,10 @@ import (
 	"fmt"
 	"hireforwork-server/interfaces"
 	"hireforwork-server/models"
-	"hireforwork-server/service"
+	service "hireforwork-server/service/modules"
+	"hireforwork-server/service/modules/auth"
 	"hireforwork-server/utils"
 	"io/ioutil"
-	"log"
 	"net/http"
 	"strconv"
 	"time"
@@ -28,11 +28,112 @@ var resumeAllowFile = map[string]bool{
 	"application/vnd.openxmlformats-officedocument.wordprocessingml.document": true,
 }
 
-type Handler struct {
-	AuthService *service.AuthService
+type UserHandler struct {
+	UserService *service.UserService
+	AuthService *auth.AuthService
 }
 
-func GetUser(w http.ResponseWriter, r *http.Request) {
+func (h *UserHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	handlerFunc := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Public routes
+		switch r.URL.Path {
+		case "/careers/auth/login":
+			if r.Method == http.MethodPost {
+				h.Login(w, r)
+				return
+			}
+		case "/careers/register":
+			if r.Method == http.MethodPost {
+				h.RegisterCareer(w, r)
+				return
+			}
+		case "/careers/create":
+			if r.Method == http.MethodPost {
+				h.CreateUser(w, r)
+				return
+			}
+		case "/request-password-reset":
+			if r.Method == http.MethodPost {
+				h.RequestPasswordResetHandler(w, r)
+				return
+			}
+		case "/reset-password":
+			if r.Method == http.MethodPost {
+				h.ResetPasswordHandler(w, r)
+				return
+			}
+		}
+
+		// Protected routes (middleware JWTMiddleware sẽ được áp dụng trong router)
+		vars := mux.Vars(r)
+		switch r.URL.Path {
+		case "/careers":
+			if r.Method == http.MethodGet {
+				h.GetUser(w, r)
+				return
+			}
+		case "/careers/" + vars["id"]:
+			if r.Method == http.MethodGet {
+				h.GetUserByID(w, r)
+				return
+			}
+			if r.Method == http.MethodDelete {
+				h.DeleteUserByID(w, r)
+				return
+			}
+		case "/careers/" + vars["id"] + "/save-job":
+			if r.Method == http.MethodGet {
+				h.GetSavedJobs(w, r)
+				return
+			}
+		case "/careers/" + vars["id"] + "/applied-job":
+			if r.Method == http.MethodGet {
+				h.GetAppliedJob(w, r)
+				return
+			}
+		// case "/careers/" + vars["id"] + "/save":
+		// 	if r.Method == http.MethodPost {
+		// 		h.SaveJob(w, r)
+		// 		return
+		// 	}
+		// case "/careers/" + vars["id"] + "/remove-save":
+		// 	if r.Method == http.MethodPost {
+		// 		h.RemoveSaveJob(w, r)
+		// 		return
+		// 	}
+		case "/careers/" + vars["id"] + "/upload-image":
+			if r.Method == http.MethodPost {
+				h.UploadImage(w, r)
+				return
+			}
+		case "/careers/" + vars["id"] + "/upload-resume":
+			if r.Method == http.MethodPost {
+				h.UploadResume(w, r)
+				return
+			}
+		case "/careers/" + vars["id"] + "/remove-resume":
+			if r.Method == http.MethodPost {
+				h.RemoveResume(w, r)
+				return
+			}
+		case "/careers/" + vars["id"] + "/update":
+			if r.Method == http.MethodPost {
+				h.UpdateUser(w, r)
+				return
+			}
+		}
+
+		http.Error(w, "Not Found", http.StatusNotFound)
+	})
+
+	// // Áp dụng decorator nếu có
+	// if h.decorator != nil {
+	// 	handlerFunc = h.decorator(handlerFunc)
+	// }
+	handlerFunc.ServeHTTP(w, r)
+}
+
+func (h *UserHandler) GetUser(w http.ResponseWriter, r *http.Request) {
 	pageStr := r.URL.Query().Get("page")
 	page, _ := strconv.Atoi(pageStr)
 
@@ -44,7 +145,7 @@ func GetUser(w http.ResponseWriter, r *http.Request) {
 	careerEmail := r.URL.Query().Get("careerEmail")
 	careerPhone := r.URL.Query().Get("careerPhone")
 
-	users, err := service.GetUser(page, pageSize, careerFirstName, lastName, careerEmail, careerPhone)
+	users, err := h.UserService.GetUser(page, pageSize, careerFirstName, lastName, careerEmail, careerPhone)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -57,10 +158,10 @@ func GetUser(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func GetUserByID(w http.ResponseWriter, r *http.Request) {
+func (h *UserHandler) GetUserByID(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 
-	user, _ := service.GetUserByID(vars["id"])
+	user, _ := h.UserService.GetUserByID(vars["id"])
 	response := interfaces.IResponse[models.User]{
 		Doc: user,
 	}
@@ -74,14 +175,14 @@ func GetUserByID(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func DeleteUserByID(w http.ResponseWriter, r *http.Request) {
+func (h *UserHandler) DeleteUserByID(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
-	response := service.DeleteUserByID(vars["id"])
+	response := h.UserService.DeleteUserByID(vars["id"])
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(response.StatusCode)
 }
 
-func CreateUser(w http.ResponseWriter, r *http.Request) {
+func (h *UserHandler) CreateUser(w http.ResponseWriter, r *http.Request) {
 
 	var user models.User
 	body, _ := ioutil.ReadAll(r.Body)
@@ -90,7 +191,7 @@ func CreateUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	response, err := service.CreateUser(user)
+	response, err := h.UserService.CreateUser(user)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
@@ -105,7 +206,7 @@ func CreateUser(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func UploadImage(w http.ResponseWriter, r *http.Request) {
+func (h *UserHandler) UploadImage(w http.ResponseWriter, r *http.Request) {
 	if err := r.ParseMultipartForm(10 << 20); err != nil {
 		http.Error(w, "Unable to parse form", http.StatusBadRequest)
 		return
@@ -131,7 +232,7 @@ func UploadImage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := service.UpdateCareerImage(url, vars["id"]); err != nil {
+	if err := h.UserService.UpdateCareerImage(url, vars["id"]); err != nil {
 		http.Error(w, "Lỗi khi cập nhập hình ảnh", http.StatusInternalServerError)
 		return
 	}
@@ -141,7 +242,7 @@ func UploadImage(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintf(w, `{"url": "%s"}`, url)
 }
 
-func UploadResume(w http.ResponseWriter, r *http.Request) {
+func (h *UserHandler) UploadResume(w http.ResponseWriter, r *http.Request) {
 	r.ParseMultipartForm(10 << 20)
 
 	file, header, err := r.FormFile("resume")
@@ -163,7 +264,7 @@ func UploadResume(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	if err := service.UpdateCareerResume(url, vars["id"]); err != nil {
+	if err := h.UserService.UpdateCareerResume(url, vars["id"]); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -172,8 +273,8 @@ func UploadResume(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintf(w, `{"url": "%s"}`, url)
 }
 
-func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
-	var credential service.Credentials
+func (h *UserHandler) Login(w http.ResponseWriter, r *http.Request) {
+	var credential auth.Credentials
 
 	err := json.NewDecoder(r.Body).Decode(&credential)
 	if err != nil {
@@ -193,7 +294,7 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func RegisterCareer(w http.ResponseWriter, r *http.Request) {
+func (h *UserHandler) RegisterCareer(w http.ResponseWriter, r *http.Request) {
 	type RegisterRequest struct {
 		FirstName   string `json:"firstName"`
 		LastName    string `json:"lastName"`
@@ -209,7 +310,7 @@ func RegisterCareer(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	existingUser, err := service.GetUserByEmail(req.CareerEmail)
+	existingUser, err := h.UserService.GetUserByEmail(req.CareerEmail)
 	if err == nil && existingUser.CareerEmail != "" {
 		http.Error(w, "Career email already exists", http.StatusConflict)
 		return
@@ -233,7 +334,7 @@ func RegisterCareer(w http.ResponseWriter, r *http.Request) {
 		VerificationCode: "",
 	}
 
-	createdUser, err := service.CreateUser(newUser)
+	createdUser, err := h.UserService.CreateUser(newUser)
 	if err != nil {
 		if err.Error() == "duplicate_email" {
 			http.Error(w, "Career email already exists", http.StatusConflict)
@@ -251,7 +352,7 @@ func RegisterCareer(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-func UpdateUser(w http.ResponseWriter, r *http.Request) {
+func (h *UserHandler) UpdateUser(w http.ResponseWriter, r *http.Request) {
 	params := mux.Vars(r)
 	id := params["id"]
 
@@ -261,7 +362,7 @@ func UpdateUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	updatedUser, err := service.UpdateUserByID(id, user)
+	updatedUser, err := h.UserService.UpdateUserByID(id, user)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -272,100 +373,60 @@ func UpdateUser(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(updatedUser)
 }
 
-func SaveJob(w http.ResponseWriter, r *http.Request) {
-	var payload struct {
-		CareerID string `json:"careerID"`
-		JobID    string `json:"jobID"`
-	}
+// func (h *UserHandler) SaveJob(w http.ResponseWriter, r *http.Request) {
+// 	var payload struct {
+// 		CareerID string `json:"careerID"`
+// 		JobID    string `json:"jobID"`
+// 	}
 
-	if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
-		http.Error(w, "Invalid request payload", http.StatusBadRequest)
-		return
-	}
+// 	if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
+// 		http.Error(w, "Invalid request payload", http.StatusBadRequest)
+// 		return
+// 	}
 
-	savedJob, err := service.SaveJob(payload.CareerID, payload.JobID)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
+// 	savedJob, err := h.UserService.SaveJob(payload.CareerID, payload.JobID)
+// 	if err != nil {
+// 		http.Error(w, err.Error(), http.StatusInternalServerError)
+// 		return
+// 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(savedJob)
-}
+// 	w.Header().Set("Content-Type", "application/json")
+// 	w.WriteHeader(http.StatusOK)
+// 	json.NewEncoder(w).Encode(savedJob)
+// }
 
-func CareerViewedJob(w http.ResponseWriter, r *http.Request) {
-	var payload struct {
-		CareerID string `json:"careerID"`
-		JobID    string `json:"jobID"`
-	}
+// func (h *UserHandler) RemoveSaveJob(w http.ResponseWriter, r *http.Request) {
+// 	vars := mux.Vars(r)
+// 	careerID := vars["id"]
+// 	jobID := r.FormValue("jobID")
 
-	if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
-		http.Error(w, "Invalid request payload", http.StatusBadRequest)
-		return
-	}
+// 	updatedCareerSaveJob, err := h.UserService.RemoveSaveJob(careerID, jobID)
+// 	if err != nil {
+// 		http.Error(w, err.Error(), http.StatusInternalServerError)
+// 		return
+// 	}
+// 	w.Header().Set("Content-Type", "application/json")
+// 	json.NewEncoder(w).Encode(updatedCareerSaveJob)
+// }
 
-	// Debugging payload
-	fmt.Printf("Received CareerID: %s, JobID: %s\n", payload.CareerID, payload.JobID)
-
-	viewedJob, err := service.CareerViewedJob(payload.CareerID, payload.JobID)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(viewedJob)
-}
-
-func RemoveSaveJob(w http.ResponseWriter, r *http.Request) {
-	vars := mux.Vars(r)
-	careerID := vars["id"]
-	jobID := r.FormValue("jobID")
-
-	updatedCareerSaveJob, err := service.RemoveSaveJob(careerID, jobID)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(updatedCareerSaveJob)
-}
-
-func GetSavedJobs(w http.ResponseWriter, r *http.Request) {
+func (h *UserHandler) GetSavedJobs(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	id := vars["id"]
 
-	savedJobs := service.GetSavedJobByCareerID(id)
+	savedJobs := h.UserService.GetSavedJobByCareerID(id)
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(savedJobs)
 }
 
-func GetViewedJobs(w http.ResponseWriter, r *http.Request) {
-	vars := mux.Vars(r)
-	id := vars["id"]
-
-	viewedJobs, err := service.GetViewedJobByCareerID(id)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(viewedJobs)
-}
-
-func RemoveResume(w http.ResponseWriter, r *http.Request) {
+func (h *UserHandler) RemoveResume(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	id := vars["id"]
 	var data map[string]interface{}
 	json.NewDecoder(r.Body).Decode(&data)
 
 	resumeURL := data["resumeURL"].(string)
-	err := service.RemoveResume(id, resumeURL)
+	err := h.UserService.RemoveResume(id, resumeURL)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -374,14 +435,14 @@ func RemoveResume(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 }
-func RequestPasswordResetHandler(w http.ResponseWriter, r *http.Request) {
+func (h *UserHandler) RequestPasswordResetHandler(w http.ResponseWriter, r *http.Request) {
 	var req interfaces.PasswordResetRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, "Invalid request", http.StatusBadRequest)
 		return
 	}
 
-	code, err := service.RequestPasswordReset(req.Email)
+	code, err := h.UserService.RequestPasswordReset(req.Email)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
@@ -390,14 +451,14 @@ func RequestPasswordResetHandler(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(map[string]string{"code": code})
 }
 
-func ResetPasswordHandler(w http.ResponseWriter, r *http.Request) {
+func (h *UserHandler) ResetPasswordHandler(w http.ResponseWriter, r *http.Request) {
 	var req interfaces.PasswordReset
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, "Invalid request", http.StatusBadRequest)
 		return
 	}
 
-	if err := service.ResetPassword(req.Email, req.Code, req.NewPassword); err != nil {
+	if err := h.UserService.ResetPassword(req.Email, req.Code, req.NewPassword); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
@@ -405,26 +466,26 @@ func ResetPasswordHandler(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
-func GetStaticHandler(w http.ResponseWriter, r *http.Request) {
-	staticData := service.GetStatic()
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	if err := json.NewEncoder(w).Encode(staticData); err != nil {
-		// Handle error if encoding fails
-		w.WriteHeader(http.StatusInternalServerError)
-		log.Println("Error encoding response:", err)
-		return
-	}
-}
+// func (h *UserHandler) GetStaticHandler(w http.ResponseWriter, r *http.Request) {
+// 	staticData := h.UserService.GetStatic()
+// 	w.Header().Set("Content-Type", "application/json")
+// 	w.WriteHeader(http.StatusOK)
+// 	if err := json.NewEncoder(w).Encode(staticData); err != nil {
+// 		// Handle error if encoding fails
+// 		w.WriteHeader(http.StatusInternalServerError)
+// 		log.Println("Error encoding response:", err)
+// 		return
+// 	}
+// }
 
-func GetAppliedJob(w http.ResponseWriter, r *http.Request) {
+func (h *UserHandler) GetAppliedJob(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	id := vars["id"]
 	query := r.URL.Query()
 	page, err := strconv.Atoi(query.Get("page"))
 	pageSize, err := strconv.Atoi(query.Get("pageSize"))
 
-	result, err := service.GetAppliedJob(id, page, pageSize)
+	result, err := h.UserService.GetAppliedJob(id, page, pageSize)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return

@@ -1,0 +1,35 @@
+{
+  "version": 2,
+  "buildCommand": "go build -o api/main",
+  "builds": [
+    {
+      "src": "api/*.go",
+      "use": "@vercel/go"
+    }
+  ],
+  "routes": [
+    {
+      "src": "/jobs",
+      "methods": ["GET"],
+      "dest": "/api/main"
+    },
+    {
+      "src": "/jobs",
+      "methods": ["POST", "PUT"],
+      "dest": "/api/main"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "/api/main"
+    }
+  ],
+  "env": {
+    "DATABASE_CONNECTION": "@database_connection",
+    "FIREBASE_BUCKET": "@firebase_bucket",
+    "FIREBASE_CREDENTIALS": "@firebase_credentials",
+    "FIRBASE_BUCKET_PICTURE": "@firebase_bucket_picture",
+    "FIRBASE_BUCKET_RESUME": "@firebase_bucket_resume",
+    "port": ":8080",
+    "SECRET_KEY": "@secret_key"
+  }
+}

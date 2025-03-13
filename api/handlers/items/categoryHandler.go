@@ -3,7 +3,7 @@ package handlers
 import (
 	"encoding/json"
 	"hireforwork-server/models"
-	"hireforwork-server/service"
+	service "hireforwork-server/service/modules"
 	"io/ioutil"
 	"net/http"
 	"strconv"
@@ -11,14 +11,51 @@ import (
 	"github.com/gorilla/mux"
 )
 
-func GetCategory(w http.ResponseWriter, r *http.Request) {
+type CategoryHandler struct {
+	CategoryService *service.CategoryService
+}
+
+func NewCategoryHandler() *CategoryHandler {
+	return &CategoryHandler{
+		CategoryService: nil,
+	}
+}
+
+func (h *CategoryHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	handlerFunc := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch {
+		case r.URL.Path == "/category" && r.Method == http.MethodGet:
+			h.GetCategory(w, r)
+		case r.URL.Path == "/category/create" && r.Method == http.MethodPost:
+			h.CreateCategory(w, r)
+		case r.URL.Path == "/category":
+			if r.Method == http.MethodPut {
+				h.UpdateCategoryByID(w, r)
+			}
+			if r.Method == http.MethodDelete {
+				h.DeleteCategoryByID(w, r)
+			}
+		default:
+			h.GetCategory(w, r)
+		}
+	})
+
+	// Áp dụng decorator nếu có
+	// if h.decorator != nil {
+	// 	handlerFunc = h.decorator(handlerFunc)
+	// }
+
+	handlerFunc.ServeHTTP(w, r)
+}
+
+func (c *CategoryHandler) GetCategory(w http.ResponseWriter, r *http.Request) {
 	pageStr := r.URL.Query().Get("page")
 	page, _ := strconv.Atoi(pageStr)
 
 	pageSizeStr := r.URL.Query().Get("pageSize")
 	pageSize, _ := strconv.Atoi(pageSizeStr)
 	CategoryName := r.URL.Query().Get("categoryName")
-	techList, err := service.GetCategory(page, pageSize, CategoryName)
+	techList, err := c.CategoryService.GetCategory(page, pageSize, CategoryName)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -31,7 +68,7 @@ func GetCategory(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func CreateCategory(w http.ResponseWriter, r *http.Request) {
+func (c *CategoryHandler) CreateCategory(w http.ResponseWriter, r *http.Request) {
 
 	var category models.Category
 	body, _ := ioutil.ReadAll(r.Body)
@@ -40,7 +77,7 @@ func CreateCategory(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	response, err := service.CreateCategory(category)
+	response, err := c.CategoryService.CreateCategory(category)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
@@ -55,7 +92,7 @@ func CreateCategory(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func UpdateCategoryByID(w http.ResponseWriter, r *http.Request) {
+func (c *CategoryHandler) UpdateCategoryByID(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	categoryID := vars["id"]
 
@@ -65,7 +102,7 @@ func UpdateCategoryByID(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	updatedCategory, err := service.UpdateCategoryByID(categoryID, updatedData)
+	updatedCategory, err := c.CategoryService.UpdateCategoryByID(categoryID, updatedData)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -79,9 +116,9 @@ func UpdateCategoryByID(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func DeleteCategoryByID(w http.ResponseWriter, r *http.Request) {
+func (c *CategoryHandler) DeleteCategoryByID(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
-	response := service.DeleteCategoryByID(vars["id"])
+	response := c.CategoryService.DeleteCategoryByID(vars["id"])
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(response.StatusCode)
 }

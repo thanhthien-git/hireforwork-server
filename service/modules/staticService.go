@@ -6,6 +6,7 @@ import (
 
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
+	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
@@ -33,8 +34,25 @@ type Static struct {
 	NewPost      []NewPost `json:"newPost"`
 }
 
+type StaticService struct {
+	userCollection    *mongo.Collection
+	companyCollection *mongo.Collection
+	jobCollection     *mongo.Collection
+}
+
+func NewStaticService(userCollection, companyCollection, jobCollection *mongo.Collection) *StaticService {
+	if userCollection == nil || companyCollection == nil || jobCollection == nil {
+		log.Fatalf("Failed in StaticService")
+	}
+	return &StaticService{
+		userCollection:    userCollection,
+		companyCollection: companyCollection,
+		jobCollection:     jobCollection,
+	}
+}
+
 // GetStatic function to gather statistics
-func GetStatic() Static {
+func (s *StaticService) GetStatic() Static {
 	var static Static
 
 	// Filter to exclude deleted entries
@@ -43,22 +61,22 @@ func GetStatic() Static {
 	}
 
 	// Count documents for users, companies, and job posts
-	static.TotalUser, _ = userCollection.CountDocuments(context.Background(), filter)
-	static.TotalCompany, _ = companyCollection.CountDocuments(context.Background(), filter)
-	static.TotalPost, _ = jobCollection.CountDocuments(context.Background(), filter)
+	static.TotalUser, _ = s.userCollection.CountDocuments(context.Background(), filter)
+	static.TotalCompany, _ = s.companyCollection.CountDocuments(context.Background(), filter)
+	static.TotalPost, _ = s.jobCollection.CountDocuments(context.Background(), filter)
 
 	// Filter for resumes
 	resumeFilter := bson.M{
 		"isDeleted": false,
 		"careerCV":  bson.M{"$ne": nil},
 	}
-	static.TotalResume, _ = userCollection.CountDocuments(context.Background(), resumeFilter)
+	static.TotalResume, _ = s.userCollection.CountDocuments(context.Background(), resumeFilter)
 
 	// Options for limiting to 5 documents and sorting by createdAt in descending order
 	opt := options.Find().SetLimit(5).SetSort(bson.M{"createAt": -1})
 
 	// Fetch the newest users
-	cur1, err := userCollection.Find(context.Background(), filter, opt)
+	cur1, err := s.userCollection.Find(context.Background(), filter, opt)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -86,7 +104,7 @@ func GetStatic() Static {
 	static.NewUser = newUsers
 
 	// Fetch the newest job posts
-	cur2, err := jobCollection.Find(context.Background(), filter, opt)
+	cur2, err := s.jobCollection.Find(context.Background(), filter, opt)
 	if err != nil {
 		log.Fatal(err)
 	}

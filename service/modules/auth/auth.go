@@ -1,54 +1,35 @@
-package service
+package auth
 
 import (
 	"context"
 	"errors"
-	dbHelper "hireforwork-server/db"
+	"hireforwork-server/config"
+	"hireforwork-server/db"
 	"hireforwork-server/models"
 	"hireforwork-server/utils"
 	"log"
-	"os"
 	"time"
 
 	"github.com/dgrijalva/jwt-go"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
-	"go.mongodb.org/mongo-driver/mongo"
 )
 
-type Credentials struct {
-	Username string `json:"username"`
-	Password string `json:"password"`
-	Role     string `json:"role"`
-}
+// instance for authservice
+func NewAuthService(dbInstance *db.DB) *AuthService {
+	collections := dbInstance.GetCollections([]string{"Career", "Company"})
 
-type AuthService struct {
-	userCollection    *mongo.Collection
-	companyCollection *mongo.Collection
-	JwtSecret         []byte
-}
+	jwtSecret := []byte(config.GetInstance().SecretKey)
 
-type Claims struct {
-	Username string `json:"username"`
-	Role     string `json:"role"`
-	jwt.StandardClaims
-}
-
-type LoginResponse struct {
-	Token string             `json:"token"`
-	Id    primitive.ObjectID `json:"_id"`
-	Role  string             `json:"role"`
-}
-
-var userCollection *mongo.Collection
-
-func init() {
-	client, ctx, err := dbHelper.ConnectDB()
-	if err != nil {
-		log.Fatalf("Failed to connect to DB: %v", err)
+	if len(jwtSecret) == 0 {
+		log.Fatalf("Need a secret key")
 	}
-	userCollection = dbHelper.GetCollection(ctx, os.Getenv("COLLECTION_CAREER"), client)
-	companyCollection = dbHelper.GetCollection(ctx, os.Getenv("COLLECTION_COMPANY"), client)
+	return &AuthService{
+		userCollection:    collections[0],
+		companyCollection: collections[1],
+		JwtSecret:         jwtSecret,
+	}
+
 }
 
 // Generate token
@@ -92,10 +73,11 @@ func (a *AuthService) CheckPasswordHash(hashedPassword, password string) bool {
 	return hashedPassword == utils.EncodeToSHA(password)
 }
 
+// Login
 func (a *AuthService) LoginForCareer(credential Credentials) (LoginResponse, error) {
 	var career models.User
 
-	err := userCollection.FindOne(context.Background(), bson.D{
+	err := a.userCollection.FindOne(context.Background(), bson.D{
 		{"careerEmail", credential.Username},
 		{"isDeleted", false},
 	}).Decode(&career)
@@ -120,7 +102,7 @@ func (a *AuthService) LoginForCareer(credential Credentials) (LoginResponse, err
 func (a *AuthService) LoginForCompany(credential Credentials) (LoginResponse, error) {
 	var company models.Company
 
-	err := companyCollection.FindOne(context.Background(), bson.D{
+	err := a.companyCollection.FindOne(context.Background(), bson.D{
 		{"contact.companyEmail", credential.Username},
 		{"isDeleted", false},
 	}).Decode(&company)
@@ -137,6 +119,55 @@ func (a *AuthService) LoginForCompany(credential Credentials) (LoginResponse, er
 		Token: token,
 		Id:    company.Id,
 		Role:  "COMPANY",
+	}
+	return response, nil
+}
+
+// refactor login function
+func (a *AuthService) Login(credential Credentials, config LoginConfig) (LoginResponse, error) {
+	var entity interface{} = config.Model
+
+	err := config.Collection.FindOne(context.Background(), bson.D{
+		{config.UsernameField, credential.Username},
+		{"isDeleted", false},
+	}).Decode(entity)
+
+	if err != nil {
+		return LoginResponse{}, errors.New("Invalid username or password")
+	}
+
+	var password string
+	var id primitive.ObjectID
+	var username string
+
+	//check user type for token creation
+	switch v := entity.(type) {
+	case *models.User:
+		password = v.Password
+		id = v.Id
+		config.Role = v.Role
+	case *models.Company:
+		password = v.Password
+		username = v.Contact.CompanyEmail
+		config.Role = "COMPANY"
+	default:
+		return LoginResponse{}, errors.New("Unsupported entity type")
+	}
+
+	if !a.CheckPasswordHash(password, credential.Password) {
+		return LoginResponse{}, errors.New("Invalid username or password")
+	}
+
+	//create token
+	token, err := a.GenerateToken(username, id, config.Role)
+	if err != nil {
+		return LoginResponse{}, err
+	}
+
+	response := LoginResponse{
+		Token: token,
+		Id:    id,
+		Role:  config.Role,
 	}
 	return response, nil
 }

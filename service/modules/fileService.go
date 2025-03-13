@@ -28,7 +28,6 @@ func InitFireBase() *firebase.App {
 		log.Fatalf("Error when create new app")
 	}
 	return app
-
 }
 
 func UploadFile(file multipart.File, header *multipart.FileHeader, folder string, contentType string) (string, error) {

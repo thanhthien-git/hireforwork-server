@@ -3,7 +3,9 @@ package service
 import (
 	"context"
 	"errors"
+	"hireforwork-server/db"
 	"hireforwork-server/models"
+	"log"
 	"math"
 	"net/http"
 
@@ -13,7 +15,21 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
-func GetCategory(page, pageSize int, CategoryName string) (models.PaginateDocs[models.Category], error) {
+type CategoryService struct {
+	collection *mongo.Collection
+}
+
+func NewCategoryService(dbInstance *db.DB) *CategoryService {
+	collect := dbInstance.GetCollection("Category")
+	if collect == nil {
+		log.Fatalf("Failed in CategoryService")
+	}
+	return &CategoryService{
+		collection: collect,
+	}
+}
+
+func (c *CategoryService) GetCategory(page, pageSize int, CategoryName string) (models.PaginateDocs[models.Category], error) {
 	var categoryList []models.Category
 
 	if page < 1 {
@@ -35,9 +51,9 @@ func GetCategory(page, pageSize int, CategoryName string) (models.PaginateDocs[m
 	findOption.SetSkip(int64(skip))
 	findOption.SetSort(bson.D{{"categoryName", 1}})
 
-	totalDocs, _ := categoryCollection.CountDocuments(context.Background(), bsonFilter)
+	totalDocs, _ := c.collection.CountDocuments(context.Background(), bsonFilter)
 	totalPage := int(math.Ceil(float64(totalDocs) / float64(pageSize)))
-	cursor, err := categoryCollection.Find(context.Background(), bsonFilter, findOption)
+	cursor, err := c.collection.Find(context.Background(), bsonFilter, findOption)
 	if err != nil {
 		return models.PaginateDocs[models.Category]{}, err
 	}
@@ -56,9 +72,9 @@ func GetCategory(page, pageSize int, CategoryName string) (models.PaginateDocs[m
 	return result, nil
 }
 
-func CreateCategory(category models.Category) (models.Category, error) {
+func (c *CategoryService) CreateCategory(category models.Category) (models.Category, error) {
 
-	result, err := categoryCollection.InsertOne(context.Background(), category)
+	result, err := c.collection.InsertOne(context.Background(), category)
 	if err != nil {
 		return models.Category{}, err
 	}
@@ -66,7 +82,7 @@ func CreateCategory(category models.Category) (models.Category, error) {
 	return category, nil
 }
 
-func DeleteCategoryByID(categoryID string) http.Response {
+func (c *CategoryService) DeleteCategoryByID(categoryID string) http.Response {
 	_id, _ := primitive.ObjectIDFromHex(categoryID)
 
 	filter := bson.M{"_id": _id}
@@ -78,7 +94,7 @@ func DeleteCategoryByID(categoryID string) http.Response {
 	}
 
 	opts := options.FindOneAndUpdate().SetReturnDocument(options.After)
-	result := categoryCollection.FindOneAndUpdate(context.Background(), filter, update, opts)
+	result := c.collection.FindOneAndUpdate(context.Background(), filter, update, opts)
 
 	if result.Err() != nil {
 		return http.Response{
@@ -90,7 +106,7 @@ func DeleteCategoryByID(categoryID string) http.Response {
 	}
 }
 
-func UpdateCategoryByID(categoryID string, updatedCategory models.Category) (models.Category, error) {
+func (c *CategoryService) UpdateCategoryByID(categoryID string, updatedCategory models.Category) (models.Category, error) {
 	_id, err := primitive.ObjectIDFromHex(categoryID)
 	if err != nil {
 		return models.Category{}, errors.New("invalid category ID format")
@@ -106,7 +122,7 @@ func UpdateCategoryByID(categoryID string, updatedCategory models.Category) (mod
 	opts := options.FindOneAndUpdate().SetReturnDocument(options.After)
 
 	var updatedDoc models.Category
-	err = categoryCollection.FindOneAndUpdate(context.Background(), filter, update, opts).Decode(&updatedDoc)
+	err = c.collection.FindOneAndUpdate(context.Background(), filter, update, opts).Decode(&updatedDoc)
 	if err != nil {
 		if err == mongo.ErrNoDocuments {
 			return models.Category{}, errors.New("category not found or already deleted")

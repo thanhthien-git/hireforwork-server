@@ -1,12 +1,11 @@
-package service
+package jobs
 
 import (
 	"context"
 	"fmt"
-	"hireforwork-server/constants"
+	"hireforwork-server/db"
 	"hireforwork-server/interfaces"
 	"hireforwork-server/models"
-	"hireforwork-server/utils"
 	"log"
 	"math"
 	"os"
@@ -19,8 +18,18 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
-func GetJob(page, pageSize int, filter interfaces.IJobFilter) (bson.M, error) {
+type JobRepository struct {
+	collection *mongo.Collection
+}
 
+func NewJobRepository(dbInstance *db.DB) *JobRepository {
+	jobCollection := dbInstance.GetCollection("Job")
+	return &JobRepository{
+		collection: jobCollection,
+	}
+}
+
+func (j *JobRepository) GetJob(page, pageSize int, filter interfaces.IJobFilter) (bson.M, error) {
 	skip := (page - 1) * pageSize
 	matchStage := bson.M{"isDeleted": false, "isClosed": false}
 
@@ -164,7 +173,7 @@ func GetJob(page, pageSize int, filter interfaces.IJobFilter) (bson.M, error) {
 	pipeline = append(pipeline, facetStage, projectStage)
 
 	var result []bson.M
-	cursor, err := jobCollection.Aggregate(context.Background(), pipeline)
+	cursor, err := j.collection.Aggregate(context.Background(), pipeline)
 
 	if err != nil {
 		log.Printf("Error finding documents: %v", err)
@@ -193,12 +202,12 @@ func GetJob(page, pageSize int, filter interfaces.IJobFilter) (bson.M, error) {
 	}, nil
 }
 
-func CreateJob(job models.Jobs) (models.Jobs, error) {
+func (j *JobRepository) CreateJob(job models.Jobs) (models.Jobs, error) {
 	currentTime := time.Now()
 	job.Id = primitive.NewObjectID()
 	job.CreateAt = primitive.NewDateTimeFromTime(currentTime)
 	job.IsClosed = false
-	result, err := jobCollection.InsertOne(context.Background(), job)
+	result, err := j.collection.InsertOne(context.Background(), job)
 	fmt.Println(err)
 	if err != nil {
 		return models.Jobs{}, fmt.Errorf("Đã có lỗi xảy ra khi tạo bài đăng")
@@ -207,7 +216,7 @@ func CreateJob(job models.Jobs) (models.Jobs, error) {
 	return job, nil
 }
 
-func UpdateJob(job models.Jobs) (models.Jobs, error) {
+func (j *JobRepository) UpdateJob(job models.Jobs) (models.Jobs, error) {
 	filter := bson.M{"_id": job.Id}
 
 	update := bson.M{
@@ -229,112 +238,15 @@ func UpdateJob(job models.Jobs) (models.Jobs, error) {
 		},
 	}
 	opts := options.FindOneAndUpdate().SetReturnDocument(options.After)
-	err := jobCollection.FindOneAndUpdate(context.Background(), filter, update, opts).Decode(&job)
+	err := j.collection.FindOneAndUpdate(context.Background(), filter, update, opts).Decode(&job)
 	if err != nil {
 		fmt.Println(err)
 		return models.Jobs{}, fmt.Errorf("Có lỗi xảy ra khi cập nhập lại thông tin")
 	}
 	return job, nil
 }
-func CheckIsExistedJob(request interfaces.IUserJob, collection *mongo.Collection) bool {
-	filter := bson.D{
-		{"isDeleted", false},
-		{"careerID", request.IDCareer},
-		{"jobID", request.JobID},
-	}
-	var result bson.M
-	err := collection.FindOne(context.Background(), filter).Decode(&result)
-	if err != nil {
-		if err == mongo.ErrNoDocuments {
-			return false
-		}
-		log.Printf("Error occurred while checking job existence: %v", err)
-		return false
-	}
-	return true
-}
 
-func ApplyForJob(request interfaces.IJobApply) error {
-	id, _ := utils.ConvertoObjectID(request.IDCareer)
-	companyID, _ := utils.ConvertoObjectID(request.CompanyID)
-	jobID, _ := utils.ConvertoObjectID(request.JobID)
-
-	newApply := models.CareerApplyJob{
-		ID:        primitive.NewObjectID(),
-		CareerID:  id,
-		JobID:     jobID,
-		CreateAt:  primitive.NewDateTimeFromTime(time.Now()),
-		CareerCV:  request.CareerCV,
-		IsDeleted: false,
-		Status:    constants.PENDING,
-		IsChange:  false,
-		CompanyID: companyID,
-	}
-
-	_, err := careerApplyJob.InsertOne(context.Background(), newApply)
-	if err != nil {
-		log.Printf("Loi o day")
-		return err
-	}
-
-	subject := "Cảm ơn bạn đã ứng tuyển"
-	body := `
-    <!DOCTYPE html>
-    <html lang="vi">
-    <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <style>
-            body {
-                font-family: Arial, sans-serif;
-                line-height: 1.6;
-                background-color: #f4f4f4;
-                margin: 0;
-                padding: 0;
-            }
-            .container {
-                max-width: 600px;
-                margin: auto;
-                background: #ffffff;
-                padding: 20px;
-                border-radius: 5px;
-                box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
-            }
-            .header {
-                text-align: center;
-                padding: 10px 0;
-            }
-            .header h1 {
-                color: #4a4a4a;
-            }
-            .footer {
-                margin-top: 20px;
-                text-align: center;
-                font-size: 0.8em;
-                color: #666666;
-            }
-        </style>
-    </head>
-    <body>
-        <div class="container">
-            <p>Chào bạn,</p>
-            <p>Cảm ơn bạn đã ứng tuyển công việc trên hệ thống của chúng tôi, nhà tuyển dụng sẽ liên lạc với bạn qua gmail sớm nhất.</p>
-            <p>Nhà tuyển dụng sẽ phản hồi bạn sớm nhất thông qua email. Nếu bạn có bất kỳ câu hỏi nào, đừng ngần ngại liên hệ với chúng tôi qua email này.</p>
-            <p>Chúc bạn một ngày tuyệt vời!</p>
-            <p>Cheers, </p>
-            <p>The NHIEUViec Team</p>
-        </div>
-    </body>
-    </html>
-    `
-	if err = SendEmail(request.CareerEmail, subject, body); err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func GetLatestJobs() ([]models.Jobs, error) {
+func (j *JobRepository) GetLatestJobs() ([]models.Jobs, error) {
 	var jobs []models.Jobs
 
 	filter := bson.M{
@@ -345,7 +257,7 @@ func GetLatestJobs() ([]models.Jobs, error) {
 	}
 	opts := options.Find().SetSort(bson.D{{"createAt", -1}}).SetLimit(10)
 
-	cursor, err := jobCollection.Find(context.Background(), filter, opts)
+	cursor, err := j.collection.Find(context.Background(), filter, opts)
 	if err != nil {
 		return nil, err
 	}
@@ -358,7 +270,7 @@ func GetLatestJobs() ([]models.Jobs, error) {
 	return jobs, nil
 }
 
-func GetJobByID(jobID string, tokenString string) (bson.M, error) {
+func (j *JobRepository) GetJobByID(jobID string, tokenString string) (bson.M, error) {
 	_id, err := primitive.ObjectIDFromHex(jobID)
 
 	if err != nil {
@@ -470,7 +382,7 @@ func GetJobByID(jobID string, tokenString string) (bson.M, error) {
 		pipeline = append(pipeline, lookUpApplyStage, lookUpSaveStage, projectStage, unsetStage)
 	}
 
-	cursor, err := jobCollection.Aggregate(context.Background(), pipeline)
+	cursor, err := j.collection.Aggregate(context.Background(), pipeline)
 	if err != nil {
 		return nil, err
 	}

@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"fmt"
+	"hireforwork-server/db"
 	"hireforwork-server/models"
 	"hireforwork-server/utils"
 	"log"
@@ -18,7 +19,20 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/writeconcern"
 )
 
-func GetUser(page, pageSize int, careerFirstName, lastName, careerEmail, careerPhone string) (models.PaginateDocs[models.User], error) {
+type UserService struct {
+	userCollection        *mongo.Collection
+	userSaveJobCollection *mongo.Collection
+	jobCollection         *mongo.Collection
+	userApplyCollection   *mongo.Collection
+}
+
+// Dependency Injection (DI)
+func NewUserService(dbInstance *db.DB) *UserService {
+	collections := dbInstance.GetCollections([]string{"Career", "Job", "CareerSaveJob", "CareerApplyJob"})
+	return &UserService{userCollection: collections[0], userSaveJobCollection: collections[1], jobCollection: collections[2], userApplyCollection: collections[3]}
+}
+
+func (u *UserService) GetUser(page, pageSize int, careerFirstName, lastName, careerEmail, careerPhone string) (models.PaginateDocs[models.User], error) {
 	var users []models.User
 	if page < 1 {
 		page = 1
@@ -51,9 +65,9 @@ func GetUser(page, pageSize int, careerFirstName, lastName, careerEmail, careerP
 		bsonFilter = append(bsonFilter, bson.E{"careerPhone", bson.D{{"$regex", careerPhone}, {"$options", "i"}}})
 	}
 
-	totalDocs, _ := userCollection.CountDocuments(context.Background(), bsonFilter)
+	totalDocs, _ := u.userCollection.CountDocuments(context.Background(), bsonFilter)
 	totalPage := int64(math.Ceil(float64(totalDocs) / float64(pageSize)))
-	cursor, err := userCollection.Find(context.Background(), bsonFilter, findOption)
+	cursor, err := u.userCollection.Find(context.Background(), bsonFilter, findOption)
 	if err != nil {
 		log.Printf("Error finding documents: %v", err)
 		return models.PaginateDocs[models.User]{}, err
@@ -75,28 +89,28 @@ func GetUser(page, pageSize int, careerFirstName, lastName, careerEmail, careerP
 	return result, nil
 }
 
-func GetUserByID(careerID string) (models.User, error) {
+func (u *UserService) GetUserByID(careerID string) (models.User, error) {
 	_id, _ := primitive.ObjectIDFromHex(careerID)
 	var user models.User
 
-	err := userCollection.FindOne(context.Background(), bson.D{{"_id", _id}}).Decode(&user)
+	err := u.userCollection.FindOne(context.Background(), bson.D{{"_id", _id}}).Decode(&user)
 	if err != nil {
 		return models.User{}, err
 	}
 	return user, nil
 }
 
-func GetUserByEmail(careerEmail string) (models.User, error) {
+func (u *UserService) GetUserByEmail(careerEmail string) (models.User, error) {
 	var user models.User
 
-	err := userCollection.FindOne(context.Background(), bson.D{{"careerEmail", careerEmail}, {"isDeleted", false}}).Decode(&user)
+	err := u.userCollection.FindOne(context.Background(), bson.D{{"careerEmail", careerEmail}, {"isDeleted", false}}).Decode(&user)
 	if err != nil {
 		return models.User{}, nil
 	}
 	return user, nil
 }
 
-func DeleteUserByID(careerID string) http.Response {
+func (u *UserService) DeleteUserByID(careerID string) http.Response {
 	_id, _ := primitive.ObjectIDFromHex(careerID)
 
 	filter := bson.M{"_id": _id}
@@ -108,7 +122,7 @@ func DeleteUserByID(careerID string) http.Response {
 	}
 
 	opts := options.FindOneAndUpdate().SetReturnDocument(options.After)
-	result := userCollection.FindOneAndUpdate(context.Background(), filter, update, opts)
+	result := u.userCollection.FindOneAndUpdate(context.Background(), filter, update, opts)
 
 	if result.Err() != nil {
 		return http.Response{
@@ -120,7 +134,7 @@ func DeleteUserByID(careerID string) http.Response {
 	}
 }
 
-func CreateUser(user models.User) (models.User, error) {
+func (u *UserService) CreateUser(user models.User) (models.User, error) {
 
 	if user.Profile.UserCV == nil {
 		user.Profile.UserCV = []string{} // Default to an empty array
@@ -134,7 +148,7 @@ func CreateUser(user models.User) (models.User, error) {
 	opts := options.Transaction().SetWriteConcern(wc)
 
 	// Khởi tạo session
-	session, err := userCollection.Database().Client().StartSession()
+	session, err := u.userCollection.Database().Client().StartSession()
 	if err != nil {
 		return models.User{}, fmt.Errorf("Error starting session: %v", err)
 	}
@@ -149,7 +163,7 @@ func CreateUser(user models.User) (models.User, error) {
 
 		// Kiểm tra xem email đã tồn tại chưa
 		filter := bson.M{"careerEmail": user.CareerEmail}
-		count, err := userCollection.CountDocuments(sc, filter)
+		count, err := u.userCollection.CountDocuments(sc, filter)
 		if err != nil {
 			_ = session.AbortTransaction(sc)
 			return fmt.Errorf("Error checking email existence: %v", err)
@@ -161,7 +175,7 @@ func CreateUser(user models.User) (models.User, error) {
 		}
 
 		// Nếu email chưa tồn tại, thêm user
-		_, err = userCollection.InsertOne(sc, user)
+		_, err = u.userCollection.InsertOne(sc, user)
 		if err != nil {
 			_ = session.AbortTransaction(sc)
 			return fmt.Errorf("Error inserting user: %v", err)
@@ -187,7 +201,7 @@ func CreateUser(user models.User) (models.User, error) {
 
 	return user, nil
 }
-func UpdateUserByID(userID string, updatedUser models.User) (models.User, error) {
+func (u *UserService) UpdateUserByID(userID string, updatedUser models.User) (models.User, error) {
 	_id, err := primitive.ObjectIDFromHex(userID)
 	if err != nil {
 		return models.User{}, fmt.Errorf("invalid user ID format: %v", err)
@@ -196,7 +210,7 @@ func UpdateUserByID(userID string, updatedUser models.User) (models.User, error)
 	filter := bson.M{"_id": _id, "isDeleted": false}
 
 	var existingUser models.User
-	err = userCollection.FindOne(context.Background(), filter).Decode(&existingUser)
+	err = u.userCollection.FindOne(context.Background(), filter).Decode(&existingUser)
 	if err != nil {
 		return models.User{}, fmt.Errorf("no user found with ID %s: %v", userID, err)
 	}
@@ -213,7 +227,7 @@ func UpdateUserByID(userID string, updatedUser models.User) (models.User, error)
 		},
 	}
 
-	result, err := userCollection.UpdateOne(context.Background(), filter, update)
+	result, err := u.userCollection.UpdateOne(context.Background(), filter, update)
 	if err != nil {
 		return models.User{}, fmt.Errorf("error updating user: %v", err)
 	}
@@ -224,101 +238,15 @@ func UpdateUserByID(userID string, updatedUser models.User) (models.User, error)
 
 	return updatedUser, nil
 }
-func SaveJob(careerID string, jobID string) (models.CareerSaveJob, error) {
-	careerObjID, _ := primitive.ObjectIDFromHex(careerID)
-	jobObjID, _ := primitive.ObjectIDFromHex(jobID)
 
-	filter := bson.M{"careerID": careerObjID}
-
-	update := bson.M{
-		"$setOnInsert": bson.M{
-			"careerID": careerObjID,
-		},
-		"$addToSet": bson.M{
-			"saveJob": jobObjID,
-		},
-	}
-	opts := options.FindOneAndUpdate().SetUpsert(true).SetReturnDocument(options.After)
-	var careerListSave models.CareerSaveJob
-	err := careerSaveJob.FindOneAndUpdate(context.Background(), filter, update, opts).Decode(&careerListSave)
-	if err != nil {
-		return models.CareerSaveJob{}, err
-	}
-	return careerListSave, nil
-}
-
-func RemoveSaveJob(careerID string, jobID string) (models.CareerSaveJob, error) {
-	careerObjID, _ := primitive.ObjectIDFromHex(careerID)
-	jobObjID, err := primitive.ObjectIDFromHex(jobID)
-
-	filter := bson.M{"careerID": careerObjID}
-
-	update := bson.M{
-		"$pull": bson.M{
-			"saveJob": jobObjID,
-		},
-	}
-	opts := options.FindOneAndUpdate().SetReturnDocument(options.After)
-
-	var careerListSave models.CareerSaveJob
-
-	err = careerSaveJob.FindOneAndUpdate(context.Background(), filter, update, opts).Decode(&careerListSave)
-	if err != nil {
-		return models.CareerSaveJob{}, err
-	}
-	return careerListSave, nil
-}
-
-func CareerViewedJob(careerID string, jobID string) (models.CareerViewedJob, error) {
-	careerObjID, err := primitive.ObjectIDFromHex(careerID)
-	if err != nil {
-		return models.CareerViewedJob{}, fmt.Errorf("invalid career ID: %v", err)
-	}
-
-	jobObjID, err := primitive.ObjectIDFromHex(jobID)
-	if err != nil {
-		return models.CareerViewedJob{}, fmt.Errorf("invalid job ID: %v", err)
-	}
-
-	viewedJob := models.ViewedJob{
-		JobID: jobObjID,
-	}
-
-	// Kiểm tra cập nhật document
-	filter := bson.M{"careerID": careerObjID}
-	update := bson.M{
-		"$addToSet": bson.M{"viewedJob": viewedJob}, // Add to set to avoid duplicates
-	}
-
-	opts := options.Update().SetUpsert(true)
-	result, err := careerViewedJob.UpdateOne(context.Background(), filter, update, opts)
-	if err != nil {
-		return models.CareerViewedJob{}, fmt.Errorf("failed to update viewed jobs: %v", err)
-	}
-
-	if result.MatchedCount == 0 && result.UpsertedCount == 0 {
-		return models.CareerViewedJob{}, fmt.Errorf("no document matched or inserted")
-	}
-
-	// Lấy lại document đã cập nhật
-	var careerViewed models.CareerViewedJob
-	err = careerViewedJob.FindOne(context.Background(), filter).Decode(&careerViewed)
-	if err != nil {
-		return models.CareerViewedJob{}, fmt.Errorf("failed to retrieve updated document: %v", err)
-	}
-
-	return careerViewed, nil
-
-}
-
-func GetSavedJobByCareerID(careerID string) models.PaginateDocs[models.Jobs] {
+func (u *UserService) GetSavedJobByCareerID(careerID string) models.PaginateDocs[models.Jobs] {
 	var saveJob []models.Jobs
 	careerObjID, _ := primitive.ObjectIDFromHex(careerID)
 	fmt.Println(careerObjID)
 	filter := bson.M{"careerID": careerObjID}
 
 	var career models.CareerSaveJob
-	err := careerSaveJob.FindOne(context.Background(), filter).Decode(&career)
+	err := u.userSaveJobCollection.FindOne(context.Background(), filter).Decode(&career)
 
 	jobFilter := bson.M{
 		"_id": bson.M{
@@ -327,10 +255,10 @@ func GetSavedJobByCareerID(careerID string) models.PaginateDocs[models.Jobs] {
 		"isDeleted": false,
 	}
 
-	totalDocs, _ := jobCollection.CountDocuments(context.Background(), jobFilter)
+	totalDocs, _ := u.jobCollection.CountDocuments(context.Background(), jobFilter)
 	totalPage := int64(math.Ceil(float64(totalDocs)) / float64(10))
 
-	cursor, err := jobCollection.Find(context.Background(), jobFilter)
+	cursor, err := u.jobCollection.Find(context.Background(), jobFilter)
 	if err != nil {
 		return models.PaginateDocs[models.Jobs]{}
 	}
@@ -350,27 +278,7 @@ func GetSavedJobByCareerID(careerID string) models.PaginateDocs[models.Jobs] {
 	return result
 }
 
-func GetViewedJobByCareerID(careerID string) ([]models.ViewedJob, error) {
-	careerObjID, err := primitive.ObjectIDFromHex(careerID)
-	if err != nil {
-		return nil, fmt.Errorf("invalid career ID: %v", err)
-	}
-
-	filter := bson.M{"careerID": careerObjID}
-
-	var careerViewed models.CareerViewedJob
-	err = careerViewedJob.FindOne(context.Background(), filter).Decode(&careerViewed)
-	if err != nil {
-		if err == mongo.ErrNoDocuments {
-			return nil, fmt.Errorf("no viewed jobs found for career ID: %s", careerID)
-		}
-		return nil, fmt.Errorf("error retrieving viewed jobs: %v", err)
-	}
-
-	return careerViewed.ViewedJob, nil
-}
-
-func UpdateCareerImage(link string, id string) error {
+func (u *UserService) UpdateCareerImage(link string, id string) error {
 	objID, _ := primitive.ObjectIDFromHex(id)
 	filter := bson.M{"_id": objID}
 	update := bson.M{
@@ -380,14 +288,14 @@ func UpdateCareerImage(link string, id string) error {
 	}
 	opt := options.FindOneAndUpdate().SetReturnDocument(options.After)
 
-	res := userCollection.FindOneAndUpdate(context.Background(), filter, update, opt)
+	res := u.userCollection.FindOneAndUpdate(context.Background(), filter, update, opt)
 	if res.Err() != nil {
 		return res.Err()
 	}
 	return nil
 }
 
-func UpdateCareerResume(link string, id string) error {
+func (u *UserService) UpdateCareerResume(link string, id string) error {
 	objID, _ := primitive.ObjectIDFromHex(id)
 	filter := bson.M{"_id": objID}
 	update := bson.M{
@@ -397,14 +305,14 @@ func UpdateCareerResume(link string, id string) error {
 	}
 	opt := options.FindOneAndUpdate().SetReturnDocument(options.After)
 
-	res := userCollection.FindOneAndUpdate(context.Background(), filter, update, opt)
+	res := u.userCollection.FindOneAndUpdate(context.Background(), filter, update, opt)
 	if res.Err() != nil {
 		return res.Err()
 	}
 	return nil
 }
 
-func RemoveResume(id string, link string) error {
+func (u *UserService) RemoveResume(id string, link string) error {
 	objID, _ := primitive.ObjectIDFromHex(id)
 	filter := bson.M{"_id": objID}
 	update := bson.M{
@@ -413,15 +321,15 @@ func RemoveResume(id string, link string) error {
 		},
 	}
 	opt := options.FindOneAndUpdate().SetReturnDocument(options.After)
-	res := userCollection.FindOneAndUpdate(context.Background(), filter, update, opt)
+	res := u.userCollection.FindOneAndUpdate(context.Background(), filter, update, opt)
 	if res.Err() != nil {
 		return res.Err()
 	}
 	return nil
 }
-func RequestPasswordReset(email string) (string, error) {
+func (u *UserService) RequestPasswordReset(email string) (string, error) {
 	var user models.User
-	err := userCollection.FindOne(context.Background(), bson.M{"careerEmail": email}).Decode(&user)
+	err := u.userCollection.FindOne(context.Background(), bson.M{"careerEmail": email}).Decode(&user)
 	if err != nil {
 		return "", fmt.Errorf("Không tìm thấy người dùng với email %s: %v", email, err)
 	}
@@ -436,7 +344,7 @@ func RequestPasswordReset(email string) (string, error) {
 		return "", fmt.Errorf("Lỗi khi gửi email: %v", err)
 	}
 
-	_, err = userCollection.UpdateOne(
+	_, err = u.userCollection.UpdateOne(
 		context.Background(),
 		bson.M{"_id": user.Id},
 		bson.M{"$set": bson.M{"verificationCode": verificationCode}},
@@ -447,16 +355,16 @@ func RequestPasswordReset(email string) (string, error) {
 
 	return verificationCode, nil
 }
-func ResetPassword(email string, code string, newPassword string) error {
+func (u *UserService) ResetPassword(email string, code string, newPassword string) error {
 	var user models.User
 
 	// Kiểm tra mã xác nhận
-	err := userCollection.FindOne(context.Background(), bson.M{"careerEmail": email, "verificationCode": code}).Decode(&user)
+	err := u.userCollection.FindOne(context.Background(), bson.M{"careerEmail": email, "verificationCode": code}).Decode(&user)
 	if err != nil {
 		return fmt.Errorf("Sai mã xác nhận hoặc email không hợp lệ: %v", err)
 	}
 	hashedPassword := utils.EncodeToSHA(newPassword)
-	_, err = userCollection.UpdateOne(
+	_, err = u.userCollection.UpdateOne(
 		context.Background(),
 		bson.M{"_id": user.Id},
 		bson.M{
@@ -471,7 +379,7 @@ func ResetPassword(email string, code string, newPassword string) error {
 	return nil
 }
 
-func GetAppliedJob(id string, page int, pageSize int) ([]bson.M, error) {
+func (u *UserService) GetAppliedJob(id string, page int, pageSize int) ([]bson.M, error) {
 	_id, _ := primitive.ObjectIDFromHex(id)
 
 	if page < 1 {
@@ -549,7 +457,7 @@ func GetAppliedJob(id string, page int, pageSize int) ([]bson.M, error) {
 		},
 	}
 
-	cursor, err := careerApplyJob.Aggregate(context.Background(), pipeline)
+	cursor, err := u.userApplyCollection.Aggregate(context.Background(), pipeline)
 	if err != nil {
 		return nil, err
 	}

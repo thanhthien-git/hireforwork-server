@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"hireforwork-server/db"
 	"hireforwork-server/interfaces"
 	"hireforwork-server/models"
 	"hireforwork-server/utils"
@@ -19,8 +20,21 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
+type CompanyService struct {
+	companyCollection, jobCollection, careerApplyJob *mongo.Collection
+}
+
+func NewCompanyService(dbInstance *db.DB) *CompanyService {
+	c := dbInstance.GetCollections([]string{"Company", "Job", "CareerApplyJob"})
+	return &CompanyService{
+		companyCollection: c[0],
+		jobCollection:     c[1],
+		careerApplyJob:    c[2],
+	}
+}
+
 // Lấy danh sách company với phân trang
-func GetCompanies(page int, pageSize int, filter interfaces.ICompanyFilter) (models.PaginateDocs[models.Company], error) {
+func (c *CompanyService) GetCompanies(page int, pageSize int, filter interfaces.ICompanyFilter) (models.PaginateDocs[models.Company], error) {
 
 	var companies []models.Company
 
@@ -72,9 +86,9 @@ func GetCompanies(page int, pageSize int, filter interfaces.ICompanyFilter) (mod
 
 	findOptions.SetProjection(bson.D{{"password", 0}})
 
-	totalDocs, _ := companyCollection.CountDocuments(context.Background(), bsonFilter)
+	totalDocs, _ := c.companyCollection.CountDocuments(context.Background(), bsonFilter)
 	totalPage := int64(math.Ceil(float64(totalDocs) / float64(pageSize)))
-	cursor, err := companyCollection.Find(context.Background(), bsonFilter, findOptions)
+	cursor, err := c.companyCollection.Find(context.Background(), bsonFilter, findOptions)
 	if err != nil {
 		log.Printf("Error finding documents: %v", err)
 		return models.PaginateDocs[models.Company]{}, err
@@ -96,20 +110,20 @@ func GetCompanies(page int, pageSize int, filter interfaces.ICompanyFilter) (mod
 	return result, nil
 }
 
-func GetCompanyByID(companyID string) (models.Company, error) {
+func (c *CompanyService) GetCompanyByID(companyID string) (models.Company, error) {
 	_id, _ := primitive.ObjectIDFromHex(companyID)
 	var company models.Company
 
 	findOptions := options.FindOne().SetProjection(bson.D{{"password", 0}})
 
-	err := companyCollection.FindOne(context.Background(), bson.D{{"_id", _id}}, findOptions).Decode(&company)
+	err := c.companyCollection.FindOne(context.Background(), bson.D{{"_id", _id}}, findOptions).Decode(&company)
 	if err != nil {
 		return models.Company{}, err
 	}
 	return company, nil
 }
 
-func GetRandomCompany() (models.Company, error) {
+func (c *CompanyService) GetRandomCompany() (models.Company, error) {
 	var company models.Company
 	pipeline := mongo.Pipeline{
 		{
@@ -120,7 +134,7 @@ func GetRandomCompany() (models.Company, error) {
 		},
 	}
 
-	cursor, err := companyCollection.Aggregate(context.Background(), pipeline)
+	cursor, err := c.companyCollection.Aggregate(context.Background(), pipeline)
 	if err != nil {
 		return company, err
 	}
@@ -137,9 +151,9 @@ func GetRandomCompany() (models.Company, error) {
 	return company, nil
 }
 
-func CreateCompany(company models.Company) (models.Company, error) {
+func (c *CompanyService) CreateCompany(company models.Company) (models.Company, error) {
 
-	result, err := companyCollection.InsertOne(context.Background(), company)
+	result, err := c.companyCollection.InsertOne(context.Background(), company)
 	if err != nil {
 		return models.Company{}, err
 	}
@@ -147,7 +161,7 @@ func CreateCompany(company models.Company) (models.Company, error) {
 	return company, nil
 }
 
-func DeleteCompanyByID(companyID string) http.Response {
+func (c *CompanyService) DeleteCompanyByID(companyID string) http.Response {
 	_id, _ := primitive.ObjectIDFromHex(companyID)
 
 	filter := bson.M{"_id": _id}
@@ -159,7 +173,7 @@ func DeleteCompanyByID(companyID string) http.Response {
 	}
 
 	opts := options.FindOneAndUpdate().SetReturnDocument(options.After)
-	result := companyCollection.FindOneAndUpdate(context.Background(), filter, update, opts)
+	result := c.companyCollection.FindOneAndUpdate(context.Background(), filter, update, opts)
 
 	if result.Err() != nil {
 		return http.Response{
@@ -171,7 +185,7 @@ func DeleteCompanyByID(companyID string) http.Response {
 	}
 }
 
-func UpdateCompanyByID(companyID string, updatedCompany models.Company) (models.Company, error) {
+func (c *CompanyService) UpdateCompanyByID(companyID string, updatedCompany models.Company) (models.Company, error) {
 	_id, err := primitive.ObjectIDFromHex(companyID)
 	if err != nil {
 		return models.Company{}, errors.New("invalid company ID format")
@@ -191,7 +205,7 @@ func UpdateCompanyByID(companyID string, updatedCompany models.Company) (models.
 	opts := options.FindOneAndUpdate().SetReturnDocument(options.After)
 
 	var updatedDoc models.Company
-	err = companyCollection.FindOneAndUpdate(context.Background(), filter, update, opts).Decode(&updatedDoc)
+	err = c.companyCollection.FindOneAndUpdate(context.Background(), filter, update, opts).Decode(&updatedDoc)
 	if err != nil {
 		if err == mongo.ErrNoDocuments {
 			return models.Company{}, errors.New("company not found or already deleted")
@@ -202,7 +216,7 @@ func UpdateCompanyByID(companyID string, updatedCompany models.Company) (models.
 	return updatedDoc, nil
 }
 
-func GetCareersByJobID(jobID string, companyID string) ([]models.UserInfo, error) {
+func (c *CompanyService) GetCareersByJobID(jobID string, companyID string) ([]models.UserInfo, error) {
 	jobObjectID, err := primitive.ObjectIDFromHex(jobID)
 	if err != nil {
 		log.Printf("Invalid job ID: %v", err)
@@ -214,7 +228,7 @@ func GetCareersByJobID(jobID string, companyID string) ([]models.UserInfo, error
 	}
 
 	var job models.Jobs
-	err = jobCollection.FindOne(context.Background(), bson.M{"_id": jobObjectID, "isDeleted": false, "companyID": companyObjectID}).Decode(&job)
+	err = c.jobCollection.FindOne(context.Background(), bson.M{"_id": jobObjectID, "isDeleted": false, "companyID": companyObjectID}).Decode(&job)
 	if err != nil {
 		log.Printf("Error finding job %v", err)
 	}
@@ -224,7 +238,7 @@ func GetCareersByJobID(jobID string, companyID string) ([]models.UserInfo, error
 	return applicants, nil
 }
 
-func GetJobsByCompanyID(companyID string, page int, pageSize int, filter interfaces.IJobFilter) (models.PaginateDocs[models.Jobs], error) {
+func (c *CompanyService) GetJobsByCompanyID(companyID string, page int, pageSize int, filter interfaces.IJobFilter) (models.PaginateDocs[models.Jobs], error) {
 
 	companyObjectID, _ := primitive.ObjectIDFromHex(companyID)
 
@@ -272,13 +286,13 @@ func GetJobsByCompanyID(companyID string, page int, pageSize int, filter interfa
 
 	findOptions := options.Find().SetSkip(int64(skip)).SetLimit(int64(pageSize)).SetSort(bson.D{{"jobTitle", 1}})
 
-	totalDocs, _ := jobCollection.CountDocuments(context.Background(), filterOption)
+	totalDocs, _ := c.jobCollection.CountDocuments(context.Background(), filterOption)
 
 	totalPages := int64(math.Ceil(float64(totalDocs) / float64(pageSize)))
 
 	var jobs []models.Jobs
 
-	cursor, err := jobCollection.Find(context.Background(), filterOption, findOptions)
+	cursor, err := c.jobCollection.Find(context.Background(), filterOption, findOptions)
 
 	if err != nil {
 		return models.PaginateDocs[models.Jobs]{}, err
@@ -298,7 +312,7 @@ func GetJobsByCompanyID(companyID string, page int, pageSize int, filter interfa
 	return result, nil
 }
 
-func DeleteJobByID(jobID []string) error {
+func (c *CompanyService) DeleteJobByID(jobID []string) error {
 	ids := make([]primitive.ObjectID, len(jobID))
 
 	for index, element := range jobID {
@@ -317,14 +331,14 @@ func DeleteJobByID(jobID []string) error {
 		},
 	}
 
-	_, err := jobCollection.UpdateMany(context.Background(), filter, update)
+	_, err := c.jobCollection.UpdateMany(context.Background(), filter, update)
 	if err != nil {
 		return errors.New("Bạn không thuộc bộ phận này")
 	}
 	return nil
 }
 
-func GetCareersApplyJob(companyID string, filter interfaces.IJobApplicationFilter) (map[string]interface{}, error) {
+func (c *CompanyService) GetCareersApplyJob(companyID string, filter interfaces.IJobApplicationFilter) (map[string]interface{}, error) {
 	id, _ := primitive.ObjectIDFromHex(companyID)
 
 	skip := (filter.Page - 1) * filter.PageSize
@@ -408,7 +422,7 @@ func GetCareersApplyJob(companyID string, filter interfaces.IJobApplicationFilte
 		{{"$skip", skip}},
 		{{"$limit", limit}},
 	}
-	cursor, err := careerApplyJob.Aggregate(context.TODO(), pipeline)
+	cursor, err := c.careerApplyJob.Aggregate(context.TODO(), pipeline)
 	if err != nil {
 		return nil, err
 	}
@@ -425,7 +439,7 @@ func GetCareersApplyJob(companyID string, filter interfaces.IJobApplicationFilte
 	return response, nil
 }
 
-func GetStatics(id primitive.ObjectID) (bson.M, error) {
+func (c *CompanyService) GetStatics(id primitive.ObjectID) (bson.M, error) {
 	result := bson.M{}
 
 	filter := bson.M{"isDeleted": false, "companyID": id}
@@ -436,7 +450,7 @@ func GetStatics(id primitive.ObjectID) (bson.M, error) {
 		}}},
 	}
 
-	cursor, _ := careerApplyJob.Aggregate(context.Background(), pipeline)
+	cursor, _ := c.careerApplyJob.Aggregate(context.Background(), pipeline)
 	defer cursor.Close(context.Background())
 
 	totalCareer := 0
@@ -444,8 +458,8 @@ func GetStatics(id primitive.ObjectID) (bson.M, error) {
 		totalCareer++
 	}
 
-	totalResume, _ := careerApplyJob.CountDocuments(context.Background(), filter)
-	totalJob, _ := jobCollection.CountDocuments(context.Background(), filter)
+	totalResume, _ := c.careerApplyJob.CountDocuments(context.Background(), filter)
+	totalJob, _ := c.jobCollection.CountDocuments(context.Background(), filter)
 
 	result["totalCareer"] = totalCareer
 	result["totalResume"] = totalResume
@@ -454,7 +468,7 @@ func GetStatics(id primitive.ObjectID) (bson.M, error) {
 	return result, nil
 }
 
-func UploadCompanyCover(link string, id string) error {
+func (c *CompanyService) UploadCompanyCover(link string, id string) error {
 	obj, _ := primitive.ObjectIDFromHex(id)
 	filter := bson.M{"_id": obj}
 	update := bson.M{
@@ -463,14 +477,14 @@ func UploadCompanyCover(link string, id string) error {
 		},
 	}
 	opt := options.FindOneAndUpdate().SetReturnDocument(options.After)
-	res := companyCollection.FindOneAndUpdate(context.Background(), filter, update, opt)
+	res := c.companyCollection.FindOneAndUpdate(context.Background(), filter, update, opt)
 	if res.Err() != nil {
 		return res.Err()
 	}
 	return nil
 }
 
-func UploadCompanyImage(link string, id string) error {
+func (c *CompanyService) UploadCompanyImage(link string, id string) error {
 	obj, _ := primitive.ObjectIDFromHex(id)
 	filter := bson.M{"_id": obj}
 	update := bson.M{
@@ -479,14 +493,14 @@ func UploadCompanyImage(link string, id string) error {
 		},
 	}
 	opt := options.FindOneAndUpdate().SetReturnDocument(options.After)
-	res := companyCollection.FindOneAndUpdate(context.Background(), filter, update, opt)
+	res := c.companyCollection.FindOneAndUpdate(context.Background(), filter, update, opt)
 	if res.Err() != nil {
 		return res.Err()
 	}
 	return nil
 }
 
-func ChangeResumeStatus(resumeID string, status string) error {
+func (c *CompanyService) ChangeResumeStatus(resumeID string, status string) error {
 	_id, _ := primitive.ObjectIDFromHex(resumeID)
 
 	update := bson.M{
@@ -496,7 +510,7 @@ func ChangeResumeStatus(resumeID string, status string) error {
 		},
 	}
 
-	result, err := careerApplyJob.UpdateOne(
+	result, err := c.careerApplyJob.UpdateOne(
 		context.Background(),
 		bson.M{
 			"_id":      _id,
@@ -515,10 +529,10 @@ func ChangeResumeStatus(resumeID string, status string) error {
 
 	return nil
 }
-func RequestPasswordResetCompany(email string) (string, error) {
+func (c *CompanyService) RequestPasswordResetCompany(email string) (string, error) {
 	var company models.Company
 
-	err := companyCollection.FindOne(context.Background(), bson.M{"contact.companyEmail": email}).Decode(&company)
+	err := c.companyCollection.FindOne(context.Background(), bson.M{"contact.companyEmail": email}).Decode(&company)
 	if err != nil {
 		return "", fmt.Errorf("Không tìm thấy công ty với email %s: %v", email, err)
 	}
@@ -533,7 +547,7 @@ func RequestPasswordResetCompany(email string) (string, error) {
 		return "", err
 	}
 
-	_, err = companyCollection.UpdateOne(
+	_, err = c.companyCollection.UpdateOne(
 		context.Background(),
 		bson.M{"_id": company.Id},
 		bson.M{"$set": bson.M{"verificationCode": verificationCode}},
@@ -545,17 +559,17 @@ func RequestPasswordResetCompany(email string) (string, error) {
 	return verificationCode, nil
 }
 
-func ResetPasswordCompany(email string, code string, newPassword string) error {
+func (c *CompanyService) ResetPasswordCompany(email string, code string, newPassword string) error {
 	var company models.Company
 
-	err := companyCollection.FindOne(context.Background(), bson.M{"contact.companyEmail": email, "verificationCode": code}).Decode(&company)
+	err := c.companyCollection.FindOne(context.Background(), bson.M{"contact.companyEmail": email, "verificationCode": code}).Decode(&company)
 	if err != nil {
 		return fmt.Errorf("Sai mã xác nhận: %v", err)
 	}
 
 	hashedPassword := utils.EncodeToSHA(newPassword)
 
-	_, err = companyCollection.UpdateOne(
+	_, err = c.companyCollection.UpdateOne(
 		context.Background(),
 		bson.M{"_id": company.Id},
 		bson.M{"$set": bson.M{"password": hashedPassword, "verificationCode": ""}},

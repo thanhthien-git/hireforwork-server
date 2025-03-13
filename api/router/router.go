@@ -2,26 +2,130 @@ package api
 
 import (
 	"hireforwork-server/api/handlers"
-	"hireforwork-server/service"
-	"os"
+	"hireforwork-server/db"
+	"hireforwork-server/middleware"
+	service "hireforwork-server/service"
+	auth "hireforwork-server/service/modules/auth"
 
 	"github.com/gorilla/mux"
 )
 
-func SetUpRouter() *mux.Router {
-	router := mux.NewRouter()
+/*
+Design Patterns Used in Router Setup:
 
-	authService := &service.AuthService{JwtSecret: []byte(os.Getenv("SECRET_KEY"))}
+1. Registry Pattern
+  - Centralizes route configuration in one place
+  - Makes it easy to manage and modify routes
+  - Provides a single source of truth for route definitions
+*/
+type RouteConfig struct {
+	Path       string
+	Handler    string
+	Methods    []string
+	Middleware []mux.MiddlewareFunc
+}
 
-	handler := &handlers.Handler{
-		AuthService: authService,
+// RouteRegistry implements the Registry Pattern
+// - Holds all route configurations in one place
+// - Makes it easy to add/modify routes without changing code
+// - Provides a centralized configuration point
+type RouteRegistry struct {
+	routes []RouteConfig
+}
+
+// NewRouteRegistry creates a new route registry with predefined routes
+// - Implements the Factory Pattern for creating the registry
+// - Routes are defined declaratively rather than imperatively
+func NewRouteRegistry(dbInstance *db.DB) *RouteRegistry {
+	return &RouteRegistry{
+		routes: []RouteConfig{
+			{
+				Path:    "/jobs",
+				Handler: "job",
+				Methods: []string{"GET"},
+			},
+			{
+				Path:    "/jobs",
+				Handler: "job",
+				Methods: []string{"POST", "PUT"},
+				Middleware: []mux.MiddlewareFunc{
+					middleware.JWTMiddleware(auth.NewAuthService(dbInstance)),
+				},
+			},
+			{
+				Path:    "/companies",
+				Handler: "company",
+			},
+			{
+				Path:    "/careers",
+				Handler: "career",
+			},
+			{
+				Path:    "/tech",
+				Handler: "tech",
+			},
+			{
+				Path:    "/field",
+				Handler: "field",
+			},
+			{
+				Path:    "/category",
+				Handler: "category",
+			},
+			{
+				Path:    "/admin",
+				Handler: "admin",
+			},
+		},
 	}
-	setUpCategoryRouter(router, handler)
-	setUpCareerRoutes(router, handler)
-	setUpCompanyRoutes(router, handler)
-	setUpJobRouter(router, handler)
-	setUpTechRouter(router, handler)
-	setUpFieldRouter(router, handler)
-	setAdminRouter(router, handler)
-	return router
+}
+
+/*
+2. Builder Pattern
+  - Separates the construction of the router from its representation
+  - Allows for different representations of the same construction process
+  - Makes it easy to add new features to the router construction
+*/
+type RouterBuilder struct {
+	router   *mux.Router
+	services *service.AppServices
+	db       *db.DB
+}
+
+// NewRouterBuilder implements the Factory Pattern
+// - Creates a new RouterBuilder instance
+// - Injects dependencies (services and db)
+func NewRouterBuilder(services *service.AppServices, db *db.DB) *RouterBuilder {
+	return &RouterBuilder{
+		router:   mux.NewRouter(),
+		services: services,
+		db:       db,
+	}
+}
+
+// BuildRoutes implements the Builder Pattern
+// - Constructs the router using the registry
+// - Handles the creation and configuration of handlers
+// - Makes the construction process flexible and extensible
+func (b *RouterBuilder) BuildRoutes(registry *RouteRegistry) *mux.Router {
+	for _, route := range registry.routes {
+		// Uses the HandlerBuilder (another Builder Pattern implementation)
+		handler := handlers.NewHandlerBuilder(b.services, route.Handler, b.db).Build()
+		if handler != nil {
+			b.router.PathPrefix(route.Path).Handler(handler)
+		}
+	}
+	return b.router
+}
+
+/*
+3. Facade Pattern
+  - Provides a simplified interface to the complex router setup
+  - Hides the complexity of route registration and handler creation
+  - Makes it easy to use the router system
+*/
+func SetUpRouter(services *service.AppServices, dbInstance *db.DB) *mux.Router {
+	registry := NewRouteRegistry(dbInstance)
+	builder := NewRouterBuilder(services, dbInstance)
+	return builder.BuildRoutes(registry)
 }

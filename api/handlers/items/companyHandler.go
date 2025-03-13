@@ -3,9 +3,11 @@ package handlers
 import (
 	"encoding/json"
 	"fmt"
+	"hireforwork-server/db"
 	"hireforwork-server/interfaces"
 	"hireforwork-server/models"
-	"hireforwork-server/service"
+	service "hireforwork-server/service/modules"
+	auth "hireforwork-server/service/modules/auth"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -15,7 +17,116 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
-func GetCompaniesHandler(w http.ResponseWriter, r *http.Request) {
+type CompanyHandler struct {
+	CompanyService *service.CompanyService
+	AuthService    *auth.AuthService
+}
+
+func NewCompanyHandler(dbInstance *db.DB) *CompanyHandler {
+	return &CompanyHandler{
+		CompanyService: service.NewCompanyService(dbInstance),
+		AuthService:    auth.NewAuthService(dbInstance),
+	}
+}
+
+func (h *CompanyHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	handlerFunc := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		vars := mux.Vars(r)
+
+		// Public routes
+		switch r.URL.Path {
+		case "/companies":
+			if r.Method == http.MethodGet {
+				h.GetCompaniesHandler(w, r)
+				return
+			}
+		case "/companies/random":
+			if r.Method == http.MethodGet {
+				h.GetRandomCompanyHandler(w, r)
+				return
+			}
+		case "/companies/auth/login":
+			if r.Method == http.MethodPost {
+				h.LoginCompany(w, r)
+				return
+			}
+		case "/companies/create":
+			if r.Method == http.MethodPost {
+				h.CreateCompany(w, r)
+				return
+			}
+		case "/companies/{id}":
+			if r.Method == http.MethodGet {
+				h.GetCompanyByID(w, r)
+				return
+			}
+		case "/companies/get-job/{id}":
+			if r.Method == http.MethodGet {
+				h.GetJobsByCompany(w, r)
+				return
+			}
+		case "/request-password-reset-company":
+			if r.Method == http.MethodPost {
+				h.RequestPasswordCompanyResetHandler(w, r)
+				return
+			}
+		case "/reset-password-company":
+			if r.Method == http.MethodPost {
+				h.ResetPasswordCompanyHandler(w, r)
+				return
+			}
+		}
+
+		// Protected routes (middleware JWTMiddleware sẽ được áp dụng trong router)
+		switch r.URL.Path {
+		case "/companies/" + vars["id"] + "/get-applier":
+			if r.Method == http.MethodGet {
+				h.GetCareerApply(w, r)
+				return
+			}
+		case "/companies/" + vars["id"] + "/get-static":
+			if r.Method == http.MethodGet {
+				h.GetStatics(w, r)
+				return
+			}
+		case "/companies/" + vars["id"] + "/update":
+			if r.Method == http.MethodPost {
+				h.UpdateCompanyByID(w, r)
+				return
+			}
+		case "/companies/" + vars["id"] + "/upload-cover":
+			if r.Method == http.MethodPost {
+				h.UploadCompanyCover(w, r)
+				return
+			}
+		case "/companies/" + vars["id"] + "/upload-img":
+			if r.Method == http.MethodPost {
+				h.UploadCompanyIMG(w, r)
+				return
+			}
+		case "/companies/change-application-status":
+			if r.Method == http.MethodPost {
+				h.ChangeResumeStatusHandler(w, r)
+				return
+			}
+		case "/companies/" + vars["id"]:
+			if r.Method == http.MethodDelete {
+				h.DeleteCompanyByID(w, r)
+				return
+			}
+		}
+
+		http.Error(w, "Not Found", http.StatusNotFound)
+	})
+
+	// // Áp dụng decorator nếu có
+	// if h.decorator != nil {
+	// 	handlerFunc = h.decorator(handlerFunc)
+	// }
+	handlerFunc.ServeHTTP(w, r)
+}
+
+func (h *CompanyHandler) GetCompaniesHandler(w http.ResponseWriter, r *http.Request) {
 	pageStr := r.URL.Query().Get("page")
 	pageSizeStr := r.URL.Query().Get("pageSize")
 	page, _ := strconv.Atoi(pageStr)
@@ -24,11 +135,11 @@ func GetCompaniesHandler(w http.ResponseWriter, r *http.Request) {
 	filter := interfaces.ICompanyFilter{
 		CompanyName:  r.URL.Query().Get("companyName"),
 		CompanyEmail: r.URL.Query().Get("companyEmail"),
-		StartDate:    getPointer(r.URL.Query().Get("startDate")),
-		EndDate:      getPointer(r.URL.Query().Get("endDate")),
+		StartDate:    h.getPointer(r.URL.Query().Get("startDate")),
+		EndDate:      h.getPointer(r.URL.Query().Get("endDate")),
 	}
 
-	companies, err := service.GetCompanies(page, pageSize, filter)
+	companies, err := h.CompanyService.GetCompanies(page, pageSize, filter)
 	if err != nil {
 		log.Printf("Error getting companies: %v", err)
 		http.Error(w, "Failed to get companies", http.StatusInternalServerError)
@@ -39,8 +150,8 @@ func GetCompaniesHandler(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(companies)
 }
 
-func GetRandomCompanyHandler(w http.ResponseWriter, r *http.Request) {
-	company, err := service.GetRandomCompany()
+func (h *CompanyHandler) GetRandomCompanyHandler(w http.ResponseWriter, r *http.Request) {
+	company, err := h.CompanyService.GetRandomCompany()
 	if err != nil {
 		http.Error(w, "Không có công ty nào", http.StatusInternalServerError)
 		return
@@ -51,10 +162,10 @@ func GetRandomCompanyHandler(w http.ResponseWriter, r *http.Request) {
 
 	json.NewEncoder(w).Encode(company)
 }
-func GetCompanyByID(w http.ResponseWriter, r *http.Request) {
+func (h *CompanyHandler) GetCompanyByID(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 
-	company, _ := service.GetCompanyByID(vars["id"])
+	company, _ := h.CompanyService.GetCompanyByID(vars["id"])
 	response := interfaces.IResponse[models.Company]{
 		Doc: company,
 	}
@@ -68,7 +179,7 @@ func GetCompanyByID(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func CreateCompany(w http.ResponseWriter, r *http.Request) {
+func (h *CompanyHandler) CreateCompany(w http.ResponseWriter, r *http.Request) {
 
 	var company models.Company
 	body, _ := ioutil.ReadAll(r.Body)
@@ -77,7 +188,7 @@ func CreateCompany(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	response, err := service.CreateCompany(company)
+	response, err := h.CompanyService.CreateCompany(company)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
@@ -92,14 +203,14 @@ func CreateCompany(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func DeleteCompanyByID(w http.ResponseWriter, r *http.Request) {
+func (h *CompanyHandler) DeleteCompanyByID(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
-	response := service.DeleteCompanyByID(vars["id"])
+	response := h.CompanyService.DeleteCompanyByID(vars["id"])
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(response.StatusCode)
 }
 
-func UpdateCompanyByID(w http.ResponseWriter, r *http.Request) {
+func (h *CompanyHandler) UpdateCompanyByID(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	companyID := vars["id"]
 
@@ -109,7 +220,7 @@ func UpdateCompanyByID(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	updatedCompany, err := service.UpdateCompanyByID(companyID, updatedData)
+	updatedCompany, err := h.CompanyService.UpdateCompanyByID(companyID, updatedData)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -123,8 +234,8 @@ func UpdateCompanyByID(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (h *Handler) LoginCompany(w http.ResponseWriter, r *http.Request) {
-	var credential service.Credentials
+func (h *CompanyHandler) LoginCompany(w http.ResponseWriter, r *http.Request) {
+	var credential auth.Credentials
 
 	err := json.NewDecoder(r.Body).Decode(&credential)
 
@@ -146,12 +257,12 @@ func (h *Handler) LoginCompany(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func GetCareersByJobID(w http.ResponseWriter, r *http.Request) {
+func (h *CompanyHandler) GetCareersByJobID(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	jobID := vars["id"]
 	companyID := vars["companyId"]
 
-	applicants, err := service.GetCareersByJobID(jobID, companyID)
+	applicants, err := h.CompanyService.GetCareersByJobID(jobID, companyID)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -161,7 +272,7 @@ func GetCareersByJobID(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(applicants)
 }
 
-func GetJobsByCompany(w http.ResponseWriter, r *http.Request) {
+func (h *CompanyHandler) GetJobsByCompany(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	companyID := vars["id"]
 	pageStr := r.URL.Query().Get("page")
@@ -177,7 +288,7 @@ func GetJobsByCompany(w http.ResponseWriter, r *http.Request) {
 		EndDateTo:      r.URL.Query().Get("endDateTo"),
 	}
 
-	jobs, err := service.GetJobsByCompanyID(companyID, page, pageSize, filter)
+	jobs, err := h.CompanyService.GetJobsByCompanyID(companyID, page, pageSize, filter)
 
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -191,7 +302,7 @@ func GetJobsByCompany(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func DeleteJobByID(w http.ResponseWriter, r *http.Request) {
+func (h *CompanyHandler) DeleteJobByID(w http.ResponseWriter, r *http.Request) {
 	var resBody struct {
 		JobIds []string `json:"ids"`
 	}
@@ -203,7 +314,7 @@ func DeleteJobByID(w http.ResponseWriter, r *http.Request) {
 		log.Printf("Error unmarshalling request body: %v", err)
 		return
 	}
-	err = service.DeleteJobByID(resBody.JobIds)
+	err = h.CompanyService.DeleteJobByID(resBody.JobIds)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		log.Printf("Error deleting job: %v", err)
@@ -215,7 +326,7 @@ func DeleteJobByID(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte(`{"message": "Xóa thành công"}`))
 }
 
-func GetCareerApply(w http.ResponseWriter, r *http.Request) {
+func (h *CompanyHandler) GetCareerApply(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	pageStr := r.URL.Query().Get("page")
 	pageSizeStr := r.URL.Query().Get("pageSize")
@@ -233,7 +344,7 @@ func GetCareerApply(w http.ResponseWriter, r *http.Request) {
 		CreateTo:    r.URL.Query().Get("createTo"),
 	}
 
-	res, err := service.GetCareersApplyJob(vars["id"], filter)
+	res, err := h.CompanyService.GetCareersApplyJob(vars["id"], filter)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
@@ -247,18 +358,18 @@ func GetCareerApply(w http.ResponseWriter, r *http.Request) {
 }
 
 // Hàm phụ để chuyển chuỗi thành con trỏ (nếu giá trị không rỗng)
-func getPointer(value string) *string {
+func (h *CompanyHandler) getPointer(value string) *string {
 	if value == "" {
 		return nil
 	}
 	return &value
 }
 
-func GetStatics(w http.ResponseWriter, r *http.Request) {
+func (h *CompanyHandler) GetStatics(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	id := vars["id"]
 	objID, _ := primitive.ObjectIDFromHex(id)
-	res, err := service.GetStatics(objID)
+	res, err := h.CompanyService.GetStatics(objID)
 	if err != nil {
 		http.Error(w, "Lỗi không xác định", http.StatusBadRequest)
 		return
@@ -267,7 +378,7 @@ func GetStatics(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(res)
 }
 
-func UploadCompanyCover(w http.ResponseWriter, r *http.Request) {
+func (h *CompanyHandler) UploadCompanyCover(w http.ResponseWriter, r *http.Request) {
 	if err := r.ParseMultipartForm(10 << 20); err != nil {
 		http.Error(w, "Unable to parse form", http.StatusBadRequest)
 		return
@@ -293,7 +404,7 @@ func UploadCompanyCover(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := service.UploadCompanyCover(url, vars["id"]); err != nil {
+	if err := h.CompanyService.UploadCompanyCover(url, vars["id"]); err != nil {
 		http.Error(w, "Lỗi khi cập nhập hình ảnh", http.StatusInternalServerError)
 		return
 	}
@@ -303,7 +414,7 @@ func UploadCompanyCover(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintf(w, `{"url": "%s"}`, url)
 }
 
-func UploadCompanyIMG(w http.ResponseWriter, r *http.Request) {
+func (h *CompanyHandler) UploadCompanyIMG(w http.ResponseWriter, r *http.Request) {
 	if err := r.ParseMultipartForm(10 << 20); err != nil {
 		http.Error(w, "Unable to parse form", http.StatusBadRequest)
 		return
@@ -329,7 +440,7 @@ func UploadCompanyIMG(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := service.UploadCompanyImage(url, vars["id"]); err != nil {
+	if err := h.CompanyService.UploadCompanyImage(url, vars["id"]); err != nil {
 		http.Error(w, "Lỗi khi cập nhập hình ảnh", http.StatusInternalServerError)
 		return
 	}
@@ -339,7 +450,7 @@ func UploadCompanyIMG(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintf(w, `{"url": "%s"}`, url)
 }
 
-func ChangeResumeStatusHandler(w http.ResponseWriter, r *http.Request) {
+func (h *CompanyHandler) ChangeResumeStatusHandler(w http.ResponseWriter, r *http.Request) {
 	type ChangeStatusRequest struct {
 		ResumeID string `json:"_id"`
 		Status   string `json:"status"`
@@ -351,7 +462,7 @@ func ChangeResumeStatusHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Vui lòng thử lại sau", http.StatusBadRequest)
 		return
 	}
-	err = service.ChangeResumeStatus(req.ResumeID, req.Status)
+	err = h.CompanyService.ChangeResumeStatus(req.ResumeID, req.Status)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -360,14 +471,14 @@ func ChangeResumeStatusHandler(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte("Cập nhập thành công!"))
 
 }
-func RequestPasswordCompanyResetHandler(w http.ResponseWriter, r *http.Request) {
+func (h *CompanyHandler) RequestPasswordCompanyResetHandler(w http.ResponseWriter, r *http.Request) {
 	var req interfaces.PasswordResetRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, "Invalid request", http.StatusBadRequest)
 		return
 	}
 
-	code, err := service.RequestPasswordResetCompany(req.Email)
+	code, err := h.CompanyService.RequestPasswordResetCompany(req.Email)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
@@ -376,14 +487,14 @@ func RequestPasswordCompanyResetHandler(w http.ResponseWriter, r *http.Request) 
 	json.NewEncoder(w).Encode(map[string]string{"code": code})
 }
 
-func ResetPasswordCompanyHandler(w http.ResponseWriter, r *http.Request) {
+func (h *CompanyHandler) ResetPasswordCompanyHandler(w http.ResponseWriter, r *http.Request) {
 	var req interfaces.PasswordReset
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, "Invalid request", http.StatusBadRequest)
 		return
 	}
 
-	if err := service.ResetPasswordCompany(req.Email, req.Code, req.NewPassword); err != nil {
+	if err := h.CompanyService.ResetPasswordCompany(req.Email, req.Code, req.NewPassword); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}

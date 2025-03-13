@@ -2,12 +2,12 @@ package middleware
 
 import (
 	"context"
-	"hireforwork-server/service"
+	auth "hireforwork-server/service/modules/auth"
 	"net/http"
 	"strings"
 )
 
-func JWTMiddleware(authService *service.AuthService) func(http.Handler) http.Handler {
+func JWTMiddleware(authService *auth.AuthService) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			authHeader := r.Header.Get("Authorization")
