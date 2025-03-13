@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "buildCommand": "go build -o main",
+  "buildCommand": "go build -o handler",
   "builds": [
     {
       "src": "*.go",
@@ -9,64 +9,8 @@
   ],
   "routes": [
     {
-      "src": "/jobs",
-      "dest": "/main"
-    },
-    {
-      "src": "/companies",
-      "dest": "/main"
-    },
-    {
-      "src": "/careers",
-      "dest": "/main"
-    },
-    {
-      "src": "/tech",
-      "dest": "/main"
-    },
-    {
-      "src": "/field",
-      "dest": "/main"
-    },
-    {
-      "src": "/category",
-      "dest": "/main"
-    },
-    {
-      "src": "/admin",
-      "dest": "/main"
-    },
-    {
-      "src": "/jobs/(.*)",
-      "dest": "/main"
-    },
-    {
-      "src": "/companies/(.*)",
-      "dest": "/main"
-    },
-    {
-      "src": "/careers/(.*)",
-      "dest": "/main"
-    },
-    {
-      "src": "/tech/(.*)",
-      "dest": "/main"
-    },
-    {
-      "src": "/field/(.*)",
-      "dest": "/main"
-    },
-    {
-      "src": "/category/(.*)",
-      "dest": "/main"
-    },
-    {
-      "src": "/admin/(.*)",
-      "dest": "/main"
-    },
-    {
       "src": "/(.*)",
-      "dest": "/main"
+      "dest": "/handler"
     }
   ]
 }
