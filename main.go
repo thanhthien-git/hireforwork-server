@@ -1,11 +1,13 @@
 package handler
 
 import (
+	"context"
 	api "hireforwork-server/api/router"
 	"hireforwork-server/db"
 	"hireforwork-server/service"
 	factory "hireforwork-server/service/modules/factory"
 	"net/http"
+	"time"
 
 	"github.com/rs/cors"
 )
@@ -22,9 +24,10 @@ func enableCORS() *cors.Cors {
 
 // Handler handles all requests
 func Handler(w http.ResponseWriter, r *http.Request) {
-	// Create database
+	// Create database with timeout
 	database := db.GetInstance()
-	defer database.Close()
+	ctx, cancel := context.WithTimeout(r.Context(), 10*time.Second)
+	defer cancel()
 
 	// Create service container
 	container := service.NewServiceContainer()
@@ -49,8 +52,11 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	// Enable CORS
 	handler := enableCORS().Handler(routerInstance)
 
+	// Create a new request with context
+	newReq := r.WithContext(ctx)
+
 	// Serve the request
-	handler.ServeHTTP(w, r)
+	handler.ServeHTTP(w, newReq)
 }
 
 // For local development only
