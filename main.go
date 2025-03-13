@@ -1,4 +1,4 @@
-package main
+package handler
 
 import (
 	api "hireforwork-server/api/router"
