@@ -21,7 +21,8 @@ func enableCORS() *cors.Cors {
 	})
 }
 
-func main() {
+// Handler is the exported function that Vercel will use to handle requests
+func Handler(w http.ResponseWriter, r *http.Request) {
 	//create database
 	database := db.GetInstance()
 	defer database.Close()
@@ -49,9 +50,15 @@ func main() {
 	// Enable CORS with a single line
 	handler := enableCORS().Handler(router)
 
-	// Run server
+	// Serve the request
+	handler.ServeHTTP(w, r)
+}
+
+func main() {
+	// For local development
+	http.HandleFunc("/", Handler)
 	log.Printf("Server is running on port 8080")
-	if err := http.ListenAndServe(":8080", handler); err != nil {
+	if err := http.ListenAndServe(":8080", nil); err != nil {
 		log.Fatal(err)
 	}
 }
