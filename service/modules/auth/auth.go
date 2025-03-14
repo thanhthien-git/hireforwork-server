@@ -38,6 +38,7 @@ func (a AuthService) GenerateToken(username string, id primitive.ObjectID, role 
 	claims := &Claims{
 		Username: username,
 		Role:     role,
+		Id:       id.Hex(),
 		StandardClaims: jwt.StandardClaims{
 			Subject:   id.Hex(),
 			IssuedAt:  time.Now().Unix(),
@@ -92,8 +93,6 @@ func (a *AuthService) LoginForCareer(credential Credentials) (LoginResponse, err
 
 	response := LoginResponse{
 		Token: token,
-		Id:    career.Id,
-		Role:  career.Role,
 	}
 
 	return response, nil
@@ -117,8 +116,6 @@ func (a *AuthService) LoginForCompany(credential Credentials) (LoginResponse, er
 
 	response := LoginResponse{
 		Token: token,
-		Id:    company.Id,
-		Role:  "COMPANY",
 	}
 	return response, nil
 }
@@ -166,8 +163,6 @@ func (a *AuthService) Login(credential Credentials, config LoginConfig) (LoginRe
 
 	response := LoginResponse{
 		Token: token,
-		Id:    id,
-		Role:  config.Role,
 	}
 	return response, nil
 }

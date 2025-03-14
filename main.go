@@ -1,4 +1,4 @@
-package handler
+package main
 
 import (
 	"context"
@@ -24,10 +24,12 @@ func enableCORS() *cors.Cors {
 
 // Handler handles all requests
 func Handler(w http.ResponseWriter, r *http.Request) {
-	// Create database with timeout
-	database := db.GetInstance()
+	// Create context with timeout
 	ctx, cancel := context.WithTimeout(r.Context(), 10*time.Second)
 	defer cancel()
+
+	// Create database
+	database := db.GetInstance()
 
 	// Create service container
 	container := service.NewServiceContainer()

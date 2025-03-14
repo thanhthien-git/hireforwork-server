@@ -2,6 +2,7 @@ package middleware
 
 import (
 	"context"
+	"fmt"
 	auth "hireforwork-server/service/modules/auth"
 	"net/http"
 	"strings"
@@ -10,6 +11,7 @@ import (
 func JWTMiddleware(authService *auth.AuthService) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			fmt.Println(r)
 			authHeader := r.Header.Get("Authorization")
 			if authHeader == "" {
 				http.Error(w, "Authorization header is required", http.StatusUnauthorized)

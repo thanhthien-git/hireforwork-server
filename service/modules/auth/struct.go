@@ -2,7 +2,6 @@ package auth
 
 import (
 	"github.com/dgrijalva/jwt-go"
-	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 )
 
@@ -19,15 +18,14 @@ type AuthService struct {
 }
 
 type Claims struct {
-	Username string `json:"username"`
+	Username string `json:"userName"`
 	Role     string `json:"role"`
+	Id       string `json:"userId"`
 	jwt.StandardClaims
 }
 
 type LoginResponse struct {
-	Token string             `json:"token"`
-	Id    primitive.ObjectID `json:"_id"`
-	Role  string             `json:"role"`
+	Token string `json:"token"`
 }
 
 type LoginConfig struct {

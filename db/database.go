@@ -5,6 +5,7 @@ import (
 	"hireforwork-server/config"
 	"log"
 	"sync"
+	"time"
 
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
@@ -20,16 +21,23 @@ var once sync.Once
 func GetInstance() *DB {
 	once.Do(func() {
 		mongoUrl := config.GetInstance().MongoUrl
-		clientOptions := options.Client().ApplyURI(mongoUrl)
+		clientOptions := options.Client().ApplyURI(mongoUrl).
+			SetServerSelectionTimeout(5 * time.Second).
+			SetConnectTimeout(10 * time.Second)
 
-		client, err := mongo.Connect(context.Background(), clientOptions)
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+
+		client, err := mongo.Connect(ctx, clientOptions)
 		if err != nil {
-			log.Fatalf("Failed to connect to MongoDB: %v", err)
+			log.Printf("Failed to connect to MongoDB: %v", err)
+			return
 		}
 
-		err = client.Ping(context.Background(), nil)
+		err = client.Ping(ctx, nil)
 		if err != nil {
-			log.Fatalf("Failed to ping MongoDB: %v", err)
+			log.Printf("Failed to ping MongoDB: %v", err)
+			return
 		}
 
 		instance = &DB{Client: client}
@@ -40,7 +48,9 @@ func GetInstance() *DB {
 
 func (d *DB) Close() {
 	if d.Client != nil {
-		if err := d.Client.Disconnect(context.Background()); err != nil {
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		if err := d.Client.Disconnect(ctx); err != nil {
 			log.Printf("Error disconnecting MongoDB: %v", err)
 		}
 	}

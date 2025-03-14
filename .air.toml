@@ -5,7 +5,7 @@ tmp_dir = "tmp"
 [build]
   args_bin = []
   bin = "tmp\\main.exe"
-  cmd = "go build -o ./tmp/main.exe ."
+  cmd = "cmd /c go build -buildmode=exe -o ./tmp/main.exe main.go"
   delay = 1000
   exclude_dir = ["assets", "tmp", "vendor", "testdata"]
   exclude_file = []
@@ -48,4 +48,4 @@ tmp_dir = "tmp"
 
 [screen]
   clear_on_rebuild = false
-  keep_scroll = true
+  keep_scroll = true 
