@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"hireforwork-server/db"
 	"hireforwork-server/interfaces"
+	"hireforwork-server/middleware"
 	"hireforwork-server/models"
 	"hireforwork-server/service/modules/jobs"
 	"net/http"
@@ -28,12 +29,10 @@ func (h *JobHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	handlerFunc := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		path := r.URL.Path
 		vars := mux.Vars(r)
-
 		// Remove trailing slash if present
 		if len(path) > 1 && path[len(path)-1] == '/' {
 			path = path[:len(path)-1]
 		}
-
 		// Handle the base path
 		if path == "/jobs" || path == "/jobs/" || path == "/" || path == "" || path == "/api/jobs" || path == "/api/jobs/" {
 			switch r.Method {
@@ -50,8 +49,13 @@ func (h *JobHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 
 		// Handle other paths
-		switch path {
-		case "/jobs/suggest", "/api/jobs/suggest":
+		switch {
+		case strings.HasSuffix(path, "save"):
+			if r.Method == http.MethodPost {
+				h.SaveJob(w, r)
+				return
+			}
+		case strings.HasSuffix(path, "suggest"):
 			if r.Method == http.MethodGet {
 				h.GetSuggestJobs(w, r)
 			} else {
@@ -65,12 +69,6 @@ func (h *JobHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 	})
-
-	// Áp dụng decorator nếu có
-	// if h.decorator != nil {
-	// 	handlerFunc = h.decorator(handlerFunc)
-	// }
-
 	handlerFunc.ServeHTTP(w, r)
 }
 
@@ -116,9 +114,7 @@ func (h *JobHandler) GetJob(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-
 	if err := json.NewEncoder(w).Encode(jobs); err != nil {
 		http.Error(w, "Error encoding JSON", http.StatusInternalServerError)
 	}
@@ -137,7 +133,6 @@ func (h *JobHandler) CreateJobHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
 	err = json.NewEncoder(w).Encode(createJob)
 	if err != nil {
@@ -155,12 +150,23 @@ func (h *JobHandler) UpdateJobHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
 	err = json.NewEncoder(w).Encode(updateJob)
 	if err != nil {
 		http.Error(w, "Có gì đó không ổn", http.StatusInternalServerError)
 	}
+}
+
+func (h *JobHandler) SaveJob(w http.ResponseWriter, r *http.Request) {
+	careerId := middleware.GetUserID(r)
+	jobId := mux.Vars(r)["id"]
+
+	savedJob, err := h.JobService.SaveJob(careerId, jobId)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	json.NewEncoder(w).Encode(savedJob)
 }
 
 // func (h *JobHandler) ApplyJob(w http.ResponseWriter, r *http.Request) {
@@ -191,7 +197,6 @@ func (h *JobHandler) GetSuggestJobs(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	if err := json.NewEncoder(w).Encode(jobs); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -201,16 +206,16 @@ func (h *JobHandler) GetSuggestJobs(w http.ResponseWriter, r *http.Request) {
 
 func (h *JobHandler) GetJobByID(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
-	authHeader := r.Header.Get("Authorization")
-	tokenString := strings.TrimPrefix(authHeader, "Bearer ")
-
-	job, err := h.JobService.GetJobByID(vars["id"], tokenString)
+	var userID string
+	if r.Header.Get("Authorization") != "" {
+		userID = middleware.GetUserID(r)
+	}
+	job, err := h.JobService.GetJobByID(vars["id"], userID)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusNotFound)
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 
 	if err := json.NewEncoder(w).Encode(job); err != nil {

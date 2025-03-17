@@ -36,6 +36,10 @@ func (j *JobService) GetLatestJobs() ([]models.Jobs, error) {
 	return j.repo.GetLatestJobs()
 }
 
-func (j *JobService) GetJobByID(jobID string, tokenString string) (bson.M, error) {
-	return j.repo.GetJobByID(jobID, tokenString)
+func (j *JobService) GetJobByID(jobID string, userId string) (bson.M, error) {
+	return j.repo.GetJobByID(jobID, userId)
+}
+
+func (j *JobService) SaveJob(careerID string, jobID string) (bson.M, error) {
+	return j.repo.SaveJob(careerID, jobID)
 }

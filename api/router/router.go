@@ -2,6 +2,7 @@ package api
 
 import (
 	"hireforwork-server/api/handlers"
+	"hireforwork-server/api/router/decorator"
 	"hireforwork-server/api/router/groups"
 	"hireforwork-server/api/router/types"
 	"hireforwork-server/db"
@@ -56,9 +57,14 @@ func (b *RouterBuilder) BuildRoutes() *mux.Router {
 	routes = append(routes, groups.JobRoutes()...)
 	routes = append(routes, groups.CompanyRoutes()...)
 
-	// Create auth middleware
+	// Create auth service
 	authService := auth.NewAuthService(b.db)
-	authMiddleware := middleware.JWTMiddleware(authService)
+
+	// Apply global middleware and decorators
+	b.router.Use(middleware.GlobalMiddleware(authService))
+	b.router.Use(decorator.WithJSONResponse)
+	b.router.Use(decorator.WithSecurityHeaders)
+	b.router.Use(decorator.WithCORS)
 
 	// Register all routes
 	for _, route := range routes {
@@ -66,9 +72,9 @@ func (b *RouterBuilder) BuildRoutes() *mux.Router {
 		if handler != nil {
 			var finalHandler http.Handler = handler
 
-			// Apply auth middleware only if route requires auth
+			// Apply JWT middleware only if route requires auth
 			if route.RequiresAuth {
-				finalHandler = authMiddleware(handler)
+				finalHandler = middleware.JWTMiddleware(authService)(handler)
 			}
 
 			// Create route with methods
@@ -86,4 +92,10 @@ func (b *RouterBuilder) BuildRoutes() *mux.Router {
 func SetUpRouter(services *service.AppServices, dbInstance *db.DB) *mux.Router {
 	builder := NewRouterBuilder(services, dbInstance)
 	return builder.BuildRoutes()
+}
+
+// Wrap http.ResponseWriter để thêm chức năng mới
+type ResponseWriter struct {
+	http.ResponseWriter
+	status int
 }

@@ -11,7 +11,10 @@ func JobRoutes() []types.RouteConfig {
 		decorator.Get("/jobs", false),
 		decorator.Post("/jobs", true),
 		decorator.Put("/jobs", true),
-		decorator.Get("/jobs/{id}", true),
+		decorator.Get("/jobs/{id}", false),
+		decorator.Post("/jobs/{id}/apply", true),
+		decorator.Post("/jobs/{id}/save", true),
+		decorator.Post("/jobs/{id}/unsave", true),
 		decorator.Put("/jobs/{id}", true),
 		decorator.Delete("/jobs/{id}", true),
 	}

@@ -2,34 +2,59 @@ package middleware
 
 import (
 	"context"
-	"fmt"
 	auth "hireforwork-server/service/modules/auth"
+	"log"
 	"net/http"
 	"strings"
 )
 
+// Key for context values
+type contextKey string
+
+const UserIDKey contextKey = "userID"
+
+// GlobalMiddleware checks for authorization header and decodes it if present
+func GlobalMiddleware(authService *auth.AuthService) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			// Check for authorization header
+			authHeader := r.Header.Get("Authorization")
+			if authHeader != "" {
+				// Try to decode token
+				tokenString := strings.TrimSpace(strings.Replace(authHeader, "Bearer ", "", 1))
+				claims, err := authService.ValidateToken(tokenString)
+
+				if err == nil {
+					// Token is valid, add user info to context
+					ctx := context.WithValue(r.Context(), UserIDKey, claims.Subject)
+					r = r.WithContext(ctx)
+					log.Printf("User authenticated: %s", claims.Subject)
+				}
+			}
+			next.ServeHTTP(w, r)
+		})
+	}
+}
+
+// JWTMiddleware verifies that the request has valid authentication
 func JWTMiddleware(authService *auth.AuthService) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			fmt.Println(r)
-			authHeader := r.Header.Get("Authorization")
-			if authHeader == "" {
-				http.Error(w, "Authorization header is required", http.StatusUnauthorized)
+			userID := GetUserID(r)
+			if userID == "" {
+				http.Error(w, "Authentication required", http.StatusUnauthorized)
 				return
 			}
-
-			tokenString := strings.TrimSpace(strings.Replace(authHeader, "Bearer ", "", 1))
-
-			claims, err := authService.ValidateToken(tokenString)
-			if err != nil {
-				http.Error(w, "Invalid token: "+err.Error(), http.StatusUnauthorized)
-				return
-			}
-
-			ctx := context.WithValue(r.Context(), "userID", claims.Subject)
-			r = r.WithContext(ctx)
 
 			next.ServeHTTP(w, r)
 		})
 	}
+}
+
+// GetUserID helper function to get userID from context
+func GetUserID(r *http.Request) string {
+	if userID, ok := r.Context().Value(UserIDKey).(string); ok {
+		return userID
+	}
+	return ""
 }
