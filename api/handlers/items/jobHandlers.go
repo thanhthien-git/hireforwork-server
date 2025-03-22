@@ -55,6 +55,11 @@ func (h *JobHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 				h.SaveJob(w, r)
 				return
 			}
+		case strings.HasSuffix(path, "apply"):
+			if r.Method == http.MethodPost {
+				h.ApplyJob(w, r)
+				return
+			}
 		case strings.HasSuffix(path, "suggest"):
 			if r.Method == http.MethodGet {
 				h.GetSuggestJobs(w, r)
@@ -134,10 +139,7 @@ func (h *JobHandler) CreateJobHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.WriteHeader(http.StatusCreated)
-	err = json.NewEncoder(w).Encode(createJob)
-	if err != nil {
-		http.Error(w, "Có gì đó không ổn", http.StatusInternalServerError)
-	}
+	json.NewEncoder(w).Encode(createJob)
 }
 
 func (h *JobHandler) UpdateJobHandler(w http.ResponseWriter, r *http.Request) {
@@ -169,26 +171,28 @@ func (h *JobHandler) SaveJob(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(savedJob)
 }
 
-// func (h *JobHandler) ApplyJob(w http.ResponseWriter, r *http.Request) {
+func (h *JobHandler) ApplyJob(w http.ResponseWriter, r *http.Request) {
 
-// 	request := interfaces.IJobApply{}
+	userID := middleware.GetUserID(r)
+	var request interfaces.IJobApply
 
-// 	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
-// 		http.Error(w, err.Error(), http.StatusBadRequest)
-// 		return
-// 	}
+	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
 
-// 	err := h.jobService.ApplyForJob(request)
-// 	if err != nil {
-// 		http.Error(w, err.Error(), http.StatusInternalServerError)
-// 		return
-// 	}
+	request.IDCareer = userID
+	request.JobID = mux.Vars(r)["id"]
 
-// 	w.Header().Set("Content-Type", "application/json")
-// 	w.WriteHeader(http.StatusOK)
-// 	json.NewEncoder(w).Encode(map[string]string{"message": "Ứng tuyển thành công, vui lòng kiểm tra email!"})
+	err := h.JobService.Apply(request)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
 
-// }
+	json.NewEncoder(w).Encode(map[string]string{"message": "Ứng tuyển thành công, vui lòng kiểm tra email!"})
+
+}
 
 func (h *JobHandler) GetSuggestJobs(w http.ResponseWriter, r *http.Request) {
 	jobs, err := h.JobService.GetLatestJobs()

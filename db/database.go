@@ -11,6 +11,9 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
+/*
+Singleton, use in main.go by calling GetInstance()
+*/
 type DB struct {
 	*mongo.Client
 }

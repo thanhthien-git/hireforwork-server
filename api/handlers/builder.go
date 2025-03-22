@@ -11,24 +11,9 @@ import (
 	"reflect"
 )
 
-/*
-Design Patterns Used in Handler Setup:
-
-1. Interface Pattern
-  - Defines a common contract for all handlers
-  - Enables polymorphism and loose coupling
-  - Makes it easy to swap implementations
-*/
 type GenericHandler interface {
 	ServeHTTP(w http.ResponseWriter, r *http.Request)
 }
-
-/*
-2. Base Handler Pattern
-  - Provides common functionality for all handlers
-  - Reduces code duplication
-  - Makes it easy to add shared features
-*/
 type BaseHandler struct {
 	services *service.AppServices
 	db       *db.DB
@@ -44,13 +29,6 @@ type HandlerBuilder struct {
 	handler *GenericHandler
 	service *service.AppServices
 }
-
-/*
-4. Configuration Pattern
-  - Separates configuration from implementation
-  - Makes it easy to modify handler behavior
-  - Provides a declarative way to define handlers
-*/
 type HandlerConfig struct {
 	HandlerType    reflect.Type
 	ServiceName    string
@@ -59,12 +37,6 @@ type HandlerConfig struct {
 	FallbackCreate func(*db.DB) interface{}
 }
 
-/*
-5. Registry Pattern
-  - Centralizes handler configurations
-  - Makes it easy to manage handler types
-  - Provides a single source of truth for handler definitions
-*/
 var handlerConfigs = map[string]HandlerConfig{
 	"job": {
 		HandlerType: reflect.TypeOf(&handlers.JobHandler{}),
@@ -102,11 +74,11 @@ var handlerConfigs = map[string]HandlerConfig{
 	},
 }
 
+// Simple Factory  Pattern
 /*
-6. Factory Pattern with Reflection
-  - Creates handlers dynamically based on configuration
-  - Uses reflection to set up handler dependencies
-  - Makes it easy to add new handler types
+1. function creates handlers based on configuration
+2. uses reflection to set up handler dependencies
+3. uses dependency injection to inject services into handlers
 */
 func createHandler(config HandlerConfig, services *service.AppServices, db *db.DB) GenericHandler {
 	handlerValue := reflect.New(config.HandlerType.Elem())
@@ -149,12 +121,6 @@ func createHandler(config HandlerConfig, services *service.AppServices, db *db.D
 	return handler
 }
 
-/*
-7. Factory Method Pattern
-  - Creates handler instances based on type
-  - Uses the configuration registry
-  - Provides a flexible way to create handlers
-*/
 func NewHandlerBuilder(services *service.AppServices, handlerType string, dbInstance *db.DB) *HandlerBuilder {
 	var handler GenericHandler
 	if config, exists := handlerConfigs[handlerType]; exists {
@@ -166,11 +132,6 @@ func NewHandlerBuilder(services *service.AppServices, handlerType string, dbInst
 	}
 }
 
-/*
-8. Builder Pattern Method
-  - Returns the constructed handler
-  - Completes the builder pattern implementation
-*/
 func (b *HandlerBuilder) Build() GenericHandler {
 	return *b.handler
 }

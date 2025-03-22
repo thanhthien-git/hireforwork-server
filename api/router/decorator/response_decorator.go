@@ -4,6 +4,9 @@ import (
 	"net/http"
 )
 
+/*
+1. Decorator Pattern - use to add functionality to the response writer
+*/
 // ResponseWriter wraps http.ResponseWriter để thêm các chức năng mới
 type ResponseWriter struct {
 	http.ResponseWriter

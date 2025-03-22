@@ -14,26 +14,13 @@ import (
 	"github.com/gorilla/mux"
 )
 
-/*
-Design Patterns Used in Router Setup:
-
-1. Decorator Pattern
-   - Routes are defined using decorator-like functions
-   - Makes route configuration more readable and maintainable
-   - Provides type safety for HTTP methods
-
-2. Builder Pattern
-   - Separates router construction from its representation
-   - Allows for different representations of the same construction process
-   - Makes it easy to add new features to the router construction
-
-3. Facade Pattern
-   - Provides a simplified interface to the complex router setup
-   - Hides the complexity of route registration and handler creation
-   - Makes it easy to use the router system
+/* Builder pattern
+1. Separate the construction of a complex object from its representation
+2. Allow different representations of the same construction process
+3. Make it easy to add new features to the router construction
 */
 
-// RouterBuilder implements the Builder Pattern
+// Encapsulates routing logic
 type RouterBuilder struct {
 	router   *mux.Router
 	services *service.AppServices
@@ -62,6 +49,7 @@ func (b *RouterBuilder) BuildRoutes() *mux.Router {
 
 	// Apply global middleware and decorators
 	b.router.Use(middleware.GlobalMiddleware(authService))
+	// use the decorator pattern to add functionality to the response writer
 	b.router.Use(decorator.WithJSONResponse)
 	b.router.Use(decorator.WithSecurityHeaders)
 	b.router.Use(decorator.WithCORS)
@@ -88,7 +76,10 @@ func (b *RouterBuilder) BuildRoutes() *mux.Router {
 	return b.router
 }
 
-// SetUpRouter is the facade for router setup
+/*
+1. Facade pattern - provide a simplified interface to the complex router setup
+*/
+// SetUpRouter is the facade for router setup - hide implementation details
 func SetUpRouter(services *service.AppServices, dbInstance *db.DB) *mux.Router {
 	builder := NewRouterBuilder(services, dbInstance)
 	return builder.BuildRoutes()

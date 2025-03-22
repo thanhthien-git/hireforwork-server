@@ -8,9 +8,11 @@ import (
 // CompanyRoutes returns all company-related routes using decorator pattern
 func CompanyRoutes() []types.RouteConfig {
 	routes := []decorator.RouteMetadata{
+		decorator.Post("/companies", false),
+		decorator.Post("/companies/auth/login", false),
+		decorator.Post("/companies/forgot-password", false),
 		decorator.Get("/companies", false),
 		decorator.Get("/companies/{id}", false),
-		decorator.Post("/companies", true),
 		decorator.Put("/companies/{id}", true),
 		decorator.Delete("/companies/{id}", true),
 	}

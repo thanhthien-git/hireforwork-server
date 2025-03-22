@@ -373,42 +373,6 @@ func (h *UserHandler) UpdateUser(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(updatedUser)
 }
 
-// func (h *UserHandler) SaveJob(w http.ResponseWriter, r *http.Request) {
-// 	var payload struct {
-// 		CareerID string `json:"careerID"`
-// 		JobID    string `json:"jobID"`
-// 	}
-
-// 	if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
-// 		http.Error(w, "Invalid request payload", http.StatusBadRequest)
-// 		return
-// 	}
-
-// 	savedJob, err := h.UserService.SaveJob(payload.CareerID, payload.JobID)
-// 	if err != nil {
-// 		http.Error(w, err.Error(), http.StatusInternalServerError)
-// 		return
-// 	}
-
-// 	w.Header().Set("Content-Type", "application/json")
-// 	w.WriteHeader(http.StatusOK)
-// 	json.NewEncoder(w).Encode(savedJob)
-// }
-
-// func (h *UserHandler) RemoveSaveJob(w http.ResponseWriter, r *http.Request) {
-// 	vars := mux.Vars(r)
-// 	careerID := vars["id"]
-// 	jobID := r.FormValue("jobID")
-
-// 	updatedCareerSaveJob, err := h.UserService.RemoveSaveJob(careerID, jobID)
-// 	if err != nil {
-// 		http.Error(w, err.Error(), http.StatusInternalServerError)
-// 		return
-// 	}
-// 	w.Header().Set("Content-Type", "application/json")
-// 	json.NewEncoder(w).Encode(updatedCareerSaveJob)
-// }
-
 func (h *UserHandler) GetSavedJobs(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	id := vars["id"]

@@ -6,6 +6,7 @@ import (
 	"hireforwork-server/db"
 	"hireforwork-server/interfaces"
 	"hireforwork-server/models"
+	"hireforwork-server/service/observe"
 	"log"
 	"math"
 	"time"
@@ -18,21 +19,38 @@ import (
 )
 
 type JobRepository struct {
-	jobCollection        *mongo.Collection
-	careerSaveCollection *mongo.Collection
-	cache                *cache.Cache
+	jobCollection         *mongo.Collection
+	careerSaveCollection  *mongo.Collection
+	careerApplyCollection *mongo.Collection
+	cache                 *cache.Cache
+	notifier              *observe.JobEventManager
 }
 
+/*
+1. Repository layer for repository pattern
+*/
+
+// Use Dependency injection to inject the database instance
 func NewJobRepository(dbInstance *db.DB) *JobRepository {
 	jobCollection := dbInstance.GetCollection("Job")
 	careerSaveCollection := dbInstance.GetCollection("CareerSaveJob")
+	careerApplyCollection := dbInstance.GetCollection("CareerApplyJob")
 	// Tạo cache với defaultExpiration là 5 phút và cleanupInterval là 10 phút
 	jobCache := cache.New(5*time.Minute, 10*time.Minute)
+	// Create the event manager
+	notifier := observe.NewJobEventManager()
 
+	// Create the skill matcher observer
+	skillMatcher := observe.NewSkillMatcherObserver(dbInstance)
+
+	// Register the observer
+	notifier.Register(skillMatcher)
 	return &JobRepository{
-		jobCollection:        jobCollection,
-		careerSaveCollection: careerSaveCollection,
-		cache:                jobCache,
+		jobCollection:         jobCollection,
+		careerSaveCollection:  careerSaveCollection,
+		careerApplyCollection: careerApplyCollection,
+		cache:                 jobCache,
+		notifier:              notifier,
 	}
 }
 
@@ -210,6 +228,7 @@ func (j *JobRepository) GetJob(page, pageSize int, filter interfaces.IJobFilter)
 }
 
 func (j *JobRepository) CreateJob(job models.Jobs) (models.Jobs, error) {
+	fmt.Println("Creating job...")
 	currentTime := time.Now()
 	job.Id = primitive.NewObjectID()
 	job.CreateAt = primitive.NewDateTimeFromTime(currentTime)
@@ -220,6 +239,10 @@ func (j *JobRepository) CreateJob(job models.Jobs) (models.Jobs, error) {
 		return models.Jobs{}, fmt.Errorf("Đã có lỗi xảy ra khi tạo bài đăng")
 	}
 	job.Id = result.InsertedID.(primitive.ObjectID)
+	//use notify in observe pattern whenever a job created
+	fmt.Println("Job created, notifying observers...")
+	j.notifier.Notify(&job)
+	fmt.Println("Observers notified")
 	return job, nil
 }
 
@@ -476,4 +499,36 @@ func (j *JobRepository) SaveJob(careerID string, jobID string) (bson.M, error) {
 	}, nil
 
 	return existingDoc, nil
+}
+
+func (j *JobRepository) Apply(request interfaces.IJobApply) error {
+	careerObjID, _ := primitive.ObjectIDFromHex(request.IDCareer)
+	companyObjID, _ := primitive.ObjectIDFromHex(request.CompanyID)
+	jobObjID, _ := primitive.ObjectIDFromHex(request.JobID)
+
+	application := models.CareerApplyJob{
+		ID:        primitive.NewObjectID(),
+		CareerID:  careerObjID,
+		JobID:     jobObjID,
+		CompanyID: companyObjID,
+		CareerCV:  request.CareerCV,
+		CreateAt:  primitive.NewDateTimeFromTime(time.Now()),
+		IsDeleted: false,
+		IsChange:  false,
+		Status:    "PENDING",
+	}
+
+	filter := bson.M{
+		"careerID": careerObjID,
+		"jobID":    jobObjID,
+	}
+
+	var existingDoc bson.M
+	err := j.careerApplyCollection.FindOne(context.Background(), filter).Decode(&existingDoc)
+
+	if err == mongo.ErrNoDocuments {
+		j.careerApplyCollection.InsertOne(context.Background(), application)
+		return nil
+	}
+	return fmt.Errorf("Job already applied")
 }

@@ -43,3 +43,7 @@ func (j *JobService) GetJobByID(jobID string, userId string) (bson.M, error) {
 func (j *JobService) SaveJob(careerID string, jobID string) (bson.M, error) {
 	return j.repo.SaveJob(careerID, jobID)
 }
+
+func (j *JobService) Apply(request interfaces.IJobApply) error {
+	return j.repo.Apply(request)
+}

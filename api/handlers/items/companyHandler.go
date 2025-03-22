@@ -28,102 +28,55 @@ func NewCompanyHandler(dbInstance *db.DB) *CompanyHandler {
 		AuthService:    auth.NewAuthService(dbInstance),
 	}
 }
-
 func (h *CompanyHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	handlerFunc := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		vars := mux.Vars(r)
+	vars := mux.Vars(r)
+	fmt.Println(r.URL)
+	// Public routes
+	publicRoutes := map[string]map[string]http.HandlerFunc{
+		"GET": {
+			"/companies":              h.GetCompaniesHandler,
+			"/companies/random":       h.GetRandomCompanyHandler,
+			"/companies/{id}":         h.GetCompanyByID,
+			"/companies/get-job/{id}": h.GetJobsByCompany,
+		},
+		"POST": {
+			"/companies/auth/login":           h.LoginCompany,
+			"/companies/create":               h.CreateCompany,
+			"/request-password-reset-company": h.RequestPasswordCompanyResetHandler,
+			"/reset-password-company":         h.ResetPasswordCompanyHandler,
+		},
+	}
 
-		// Public routes
-		switch r.URL.Path {
-		case "/companies":
-			if r.Method == http.MethodGet {
-				h.GetCompaniesHandler(w, r)
-				return
-			}
-		case "/companies/random":
-			if r.Method == http.MethodGet {
-				h.GetRandomCompanyHandler(w, r)
-				return
-			}
-		case "/companies/auth/login":
-			if r.Method == http.MethodPost {
-				h.LoginCompany(w, r)
-				return
-			}
-		case "/companies/create":
-			if r.Method == http.MethodPost {
-				h.CreateCompany(w, r)
-				return
-			}
-		case "/companies/{id}":
-			if r.Method == http.MethodGet {
-				h.GetCompanyByID(w, r)
-				return
-			}
-		case "/companies/get-job/{id}":
-			if r.Method == http.MethodGet {
-				h.GetJobsByCompany(w, r)
-				return
-			}
-		case "/request-password-reset-company":
-			if r.Method == http.MethodPost {
-				h.RequestPasswordCompanyResetHandler(w, r)
-				return
-			}
-		case "/reset-password-company":
-			if r.Method == http.MethodPost {
-				h.ResetPasswordCompanyHandler(w, r)
-				return
-			}
-		}
+	// Protected routes
+	protectedRoutes := map[string]map[string]http.HandlerFunc{
+		"GET": {
+			"/companies/" + vars["id"] + "/get-applier": h.GetCareerApply,
+			"/companies/" + vars["id"] + "/get-static":  h.GetStatics,
+		},
+		"POST": {
+			"/companies/" + vars["id"] + "/update":       h.UpdateCompanyByID,
+			"/companies/" + vars["id"] + "/upload-cover": h.UploadCompanyCover,
+			"/companies/" + vars["id"] + "/upload-img":   h.UploadCompanyIMG,
+			"/companies/change-application-status":       h.ChangeResumeStatusHandler,
+		},
+		"DELETE": {
+			"/companies/" + vars["id"]: h.DeleteCompanyByID,
+		},
+	}
 
-		// Protected routes (middleware JWTMiddleware sẽ được áp dụng trong router)
-		switch r.URL.Path {
-		case "/companies/" + vars["id"] + "/get-applier":
-			if r.Method == http.MethodGet {
-				h.GetCareerApply(w, r)
-				return
-			}
-		case "/companies/" + vars["id"] + "/get-static":
-			if r.Method == http.MethodGet {
-				h.GetStatics(w, r)
-				return
-			}
-		case "/companies/" + vars["id"] + "/update":
-			if r.Method == http.MethodPost {
-				h.UpdateCompanyByID(w, r)
-				return
-			}
-		case "/companies/" + vars["id"] + "/upload-cover":
-			if r.Method == http.MethodPost {
-				h.UploadCompanyCover(w, r)
-				return
-			}
-		case "/companies/" + vars["id"] + "/upload-img":
-			if r.Method == http.MethodPost {
-				h.UploadCompanyIMG(w, r)
-				return
-			}
-		case "/companies/change-application-status":
-			if r.Method == http.MethodPost {
-				h.ChangeResumeStatusHandler(w, r)
-				return
-			}
-		case "/companies/" + vars["id"]:
-			if r.Method == http.MethodDelete {
-				h.DeleteCompanyByID(w, r)
-				return
-			}
-		}
+	// Check public routes
+	if handler, ok := publicRoutes[r.Method][r.URL.Path]; ok {
+		handler(w, r)
+		return
+	}
 
-		http.Error(w, "Not Found", http.StatusNotFound)
-	})
+	// Check protected routes
+	if handler, ok := protectedRoutes[r.Method][r.URL.Path]; ok {
+		handler(w, r)
+		return
+	}
 
-	// // Áp dụng decorator nếu có
-	// if h.decorator != nil {
-	// 	handlerFunc = h.decorator(handlerFunc)
-	// }
-	handlerFunc.ServeHTTP(w, r)
+	http.Error(w, "Not Found", http.StatusNotFound)
 }
 
 func (h *CompanyHandler) GetCompaniesHandler(w http.ResponseWriter, r *http.Request) {
