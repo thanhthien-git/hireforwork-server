@@ -3,6 +3,7 @@ package service
 import (
 	"fmt"
 	"os"
+	"time"
 
 	"gopkg.in/gomail.v2"
 )
@@ -13,13 +14,33 @@ func SendEmail(to string, subject string, body string) error {
 	smtpHost := "smtp.gmail.com"
 	smtpPort := 587
 
+	// Create a new message
 	m := gomail.NewMessage()
 	m.SetHeader("From", from)
 	m.SetHeader("To", to)
 	m.SetHeader("Subject", subject)
 	m.SetBody("text/html", body)
+
+	// Create a new dialer with timeout settings
 	d := gomail.NewDialer(smtpHost, smtpPort, from, password)
-	return d.DialAndSend(m)
+	d.SSL = false
+	d.TLSConfig = nil
+
+	// Try to send the email with retries
+	maxRetries := 3
+	var lastErr error
+
+	for i := 0; i < maxRetries; i++ {
+		if err := d.DialAndSend(m); err != nil {
+			lastErr = err
+			// Wait before retrying
+			time.Sleep(time.Second * time.Duration(i+1))
+			continue
+		}
+		return nil
+	}
+
+	return fmt.Errorf("failed to send email after %d attempts: %v", maxRetries, lastErr)
 }
 
 func SendRecommendationJob(to string, subject string, body string) error {
