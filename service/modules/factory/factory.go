@@ -53,9 +53,13 @@ func (f *ServiceFactory) CreateService(serviceType string) interface{} {
 }
 
 func (f *ServiceFactory) RegisterAllServices(container *service.ServiceContainer) {
-	fmt.Println("Registering all services...")
+	// Only log once at the start
+	fmt.Println("Initializing service container...")
+
+	// Register all services
 	for serviceType := range serviceCreators {
-		fmt.Printf("Registering service: %s\n", serviceType)
 		container.Register(serviceType, f.CreateService(serviceType))
 	}
+
+	fmt.Println("Service container initialized successfully")
 }

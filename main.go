@@ -6,7 +6,9 @@ import (
 	"hireforwork-server/db"
 	"hireforwork-server/service"
 	factory "hireforwork-server/service/modules/factory"
+	"log"
 	"net/http"
+	"os"
 	"time"
 
 	"github.com/rs/cors"
@@ -15,19 +17,31 @@ import (
 // enableCORS creates a CORS middleware with default settings
 func enableCORS() *cors.Cors {
 	return cors.New(cors.Options{
-		AllowedOrigins:   []string{"*"},
-		AllowedMethods:   []string{"GET", "POST", "DELETE", "PUT"},
-		AllowedHeaders:   []string{"Authorization", "Content-Type"},
+		AllowedOrigins:   []string{"http://localhost:3000", "https://your-production-domain.com"}, // Replace with your actual domains
+		AllowedMethods:   []string{"GET", "POST", "DELETE", "PUT", "OPTIONS"},
+		AllowedHeaders:   []string{"Authorization", "Content-Type", "Accept"},
 		AllowCredentials: true,
+		MaxAge:           43200, // 12 hours in seconds
 	})
 }
 
 // Handler handles all requests
-func Handler(w http.ResponseWriter, r *http.Request) {
-	// Create context with timeout
-	ctx, cancel := context.WithTimeout(r.Context(), 10*time.Second)
-	defer cancel()
+func Handler(handler http.Handler) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		// Create context with timeout
+		ctx, cancel := context.WithTimeout(r.Context(), 30*time.Second)
+		defer cancel()
 
+		// Create a new request with context
+		newReq := r.WithContext(ctx)
+
+		// Serve the request
+		handler.ServeHTTP(w, newReq)
+	}
+}
+
+// For local development only
+func main() {
 	// Create database
 	database := db.GetInstance()
 
@@ -52,21 +66,15 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	routerInstance := api.SetUpRouter(appServices, database)
 
 	// Enable CORS
-	handler := enableCORS().Handler(routerInstance)
+	corsHandler := enableCORS().Handler(routerInstance)
 
-	// Create a new request with context
-	newReq := r.WithContext(ctx)
+	// Create the final handler with context
+	finalHandler := Handler(corsHandler)
 
-	// Serve the request
-	handler.ServeHTTP(w, newReq)
-}
-
-// For local development only
-func main() {
-	http.HandleFunc("/", Handler)
 	port := ":8080"
-	println("Server is running on port", port)
-	if err := http.ListenAndServe(port, nil); err != nil {
-		panic(err)
+	log.Printf("Server is running on port %s", port)
+	if err := http.ListenAndServe(port, finalHandler); err != nil {
+		log.Printf("Server error: %v", err)
+		os.Exit(1)
 	}
 }
