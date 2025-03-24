@@ -49,6 +49,7 @@ func (b *RouterBuilder) BuildRoutes() *mux.Router {
 
 	// Apply global middleware and decorators
 	b.router.Use(middleware.GlobalMiddleware(authService))
+	b.router.Use(middleware.LoggingMiddleware)
 	// use the decorator pattern to add functionality to the response writer
 	b.router.Use(decorator.WithJSONResponse)
 	b.router.Use(decorator.WithSecurityHeaders)

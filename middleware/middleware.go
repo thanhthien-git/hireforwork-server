@@ -6,12 +6,38 @@ import (
 	"log"
 	"net/http"
 	"strings"
+	"time"
 )
 
 // Key for context values
 type contextKey string
 
 const UserIDKey contextKey = "userID"
+
+func LoggingMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		start := time.Now()
+		ip := r.RemoteAddr
+		userAgent := r.Header.Get("User-Agent")
+
+		log.Printf(
+			"Started %s %s from %s (User-Agent: %s)",
+			r.Method,
+			r.URL.Path,
+			ip,
+			userAgent,
+		)
+
+		next.ServeHTTP(w, r)
+
+		log.Printf(
+			"Completed %s %s in %v",
+			r.Method,
+			r.URL.Path,
+			time.Since(start),
+		)
+	})
+}
 
 // GlobalMiddleware checks for authorization header and decodes it if present
 func GlobalMiddleware(authService *auth.AuthService) func(http.Handler) http.Handler {

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"hireforwork-server/db"
 	"hireforwork-server/models"
+	"hireforwork-server/service/modules/unit_of_work"
 	"hireforwork-server/utils"
 	"log"
 	"math"
@@ -16,7 +17,6 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
-	"go.mongodb.org/mongo-driver/mongo/writeconcern"
 )
 
 type UserService struct {
@@ -24,12 +24,13 @@ type UserService struct {
 	userSaveJobCollection *mongo.Collection
 	jobCollection         *mongo.Collection
 	userApplyCollection   *mongo.Collection
+	uow                   *unit_of_work.UnitOfWork
 }
 
 // Dependency Injection (DI)
 func NewUserService(dbInstance *db.DB) *UserService {
 	collections := dbInstance.GetCollections([]string{"Career", "Job", "CareerSaveJob", "CareerApplyJob"})
-	return &UserService{userCollection: collections[0], userSaveJobCollection: collections[1], jobCollection: collections[2], userApplyCollection: collections[3]}
+	return &UserService{userCollection: collections[0], userSaveJobCollection: collections[1], jobCollection: collections[2], userApplyCollection: collections[3], uow: unit_of_work.NewUnitOfWork(dbInstance)}
 }
 
 func (u *UserService) GetUser(page, pageSize int, careerFirstName, lastName, careerEmail, careerPhone string) (models.PaginateDocs[models.User], error) {
@@ -134,73 +135,32 @@ func (u *UserService) DeleteUserByID(careerID string) http.Response {
 	}
 }
 
-func (u *UserService) CreateUser(user models.User) (models.User, error) {
-
-	if user.Profile.UserCV == nil {
-		user.Profile.UserCV = []string{} // Default to an empty array
-	}
-	if user.Profile.Skills == nil {
-		user.Profile.Skills = []string{} // Default to an empty array
-	}
-
-	// Sử dụng session để đảm bảo tính toàn vẹn của dữ liệu
-	wc := writeconcern.New(writeconcern.WMajority())
-	opts := options.Transaction().SetWriteConcern(wc)
-
-	// Khởi tạo session
-	session, err := u.userCollection.Database().Client().StartSession()
-	if err != nil {
-		return models.User{}, fmt.Errorf("Error starting session: %v", err)
-	}
-	defer session.EndSession(context.Background())
-
-	// Thực hiện transaction
-	err = mongo.WithSession(context.Background(), session, func(sc mongo.SessionContext) error {
-		err := session.StartTransaction(opts)
-		if err != nil {
-			return fmt.Errorf("Error starting transaction: %v", err)
-		}
-
-		// Kiểm tra xem email đã tồn tại chưa
+func (u *UserService) CreateUser(user models.User) error {
+	u.uow.RegisterChange(func(ctx mongo.SessionContext) error {
 		filter := bson.M{"careerEmail": user.CareerEmail}
-		count, err := u.userCollection.CountDocuments(sc, filter)
+		count, err := u.userCollection.CountDocuments(ctx, filter)
 		if err != nil {
-			_ = session.AbortTransaction(sc)
 			return fmt.Errorf("Error checking email existence: %v", err)
 		}
-
 		if count > 0 {
-			_ = session.AbortTransaction(sc)
 			return fmt.Errorf("Account has already been registered")
 		}
 
-		// Nếu email chưa tồn tại, thêm user
-		_, err = u.userCollection.InsertOne(sc, user)
+		_, err = u.userCollection.InsertOne(ctx, user)
 		if err != nil {
-			_ = session.AbortTransaction(sc)
 			return fmt.Errorf("Error inserting user: %v", err)
-		}
-
-		// Commit transaction
-		err = session.CommitTransaction(sc)
-		if err != nil {
-			_ = session.AbortTransaction(sc)
-			return fmt.Errorf("Error committing transaction: %v", err)
 		}
 
 		return nil
 	})
 
-	if err != nil {
-		// Kiểm tra lỗi trùng lặp email
-		if err.Error() == "Account has already been registered" {
-			return models.User{}, fmt.Errorf("duplicate_email") // Trả về lỗi trùng lặp email
-		}
-		return models.User{}, err
+	// Execute the transaction
+	if err := u.uow.Commit(); err != nil {
+		return err
 	}
-
-	return user, nil
+	return nil
 }
+
 func (u *UserService) UpdateUserByID(userID string, updatedUser models.User) (models.User, error) {
 	_id, err := primitive.ObjectIDFromHex(userID)
 	if err != nil {
@@ -327,6 +287,7 @@ func (u *UserService) RemoveResume(id string, link string) error {
 	}
 	return nil
 }
+
 func (u *UserService) RequestPasswordReset(email string) (string, error) {
 	var user models.User
 	err := u.userCollection.FindOne(context.Background(), bson.M{"careerEmail": email}).Decode(&user)
@@ -355,6 +316,7 @@ func (u *UserService) RequestPasswordReset(email string) (string, error) {
 
 	return verificationCode, nil
 }
+
 func (u *UserService) ResetPassword(email string, code string, newPassword string) error {
 	var user models.User
 

@@ -26,8 +26,17 @@ type ServiceFactory struct {
 	deps *ServiceDependencies
 }
 
+// Factory method pattern
+// Định nghĩa interface cho factory method
 type ServiceCreator func(*ServiceDependencies) interface{}
 
+// Map các hàm tạo đối tượng
+/*
+1. Sử dụng interface ServiceCreator để tạo đối tượng
+2. Mỗi loại service có 1 hàm tạo riêng
+3. Cho phép mở rộng = cách thêm hàm tạo mới
+4. Tuân thủ nguyên tắt Open/Closed
+*/
 var serviceCreators = map[string]ServiceCreator{
 	"auth":     func(deps *ServiceDependencies) interface{} { return auth.NewAuthService(deps.DB) },
 	"job":      func(deps *ServiceDependencies) interface{} { return job.NewJobService(deps.DB) },
@@ -45,6 +54,13 @@ func NewServiceFactory(deps *ServiceDependencies) *ServiceFactory {
 	return &ServiceFactory{deps: deps}
 }
 
+//Simple Factory Pattern
+/*
+1. Chỉ có 1 phương thức duy nhất
+2. Dùng 1 string parameter để tạo đối tượng
+3. Tạo đối tượng dựa trên kiểu đối tượng cần tạo
+4. Không có đối tượng/interface phức tạp
+*/
 func (f *ServiceFactory) CreateService(serviceType string) interface{} {
 	if creator, exists := serviceCreators[serviceType]; exists {
 		return creator(f.deps)

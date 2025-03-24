@@ -191,7 +191,7 @@ func (h *UserHandler) CreateUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	response, err := h.UserService.CreateUser(user)
+	err := h.UserService.CreateUser(user)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
@@ -200,7 +200,7 @@ func (h *UserHandler) CreateUser(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 
-	if err := json.NewEncoder(w).Encode(response); err != nil {
+	if err := json.NewEncoder(w).Encode(map[string]string{"message": "User created successfully"}); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -334,7 +334,7 @@ func (h *UserHandler) RegisterCareer(w http.ResponseWriter, r *http.Request) {
 		VerificationCode: "",
 	}
 
-	createdUser, err := h.UserService.CreateUser(newUser)
+	err = h.UserService.CreateUser(newUser)
 	if err != nil {
 		if err.Error() == "duplicate_email" {
 			http.Error(w, "Career email already exists", http.StatusConflict)
@@ -348,7 +348,6 @@ func (h *UserHandler) RegisterCareer(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(map[string]string{
 		"message": "User registered successfully",
-		"_id":     createdUser.Id.Hex(),
 	})
 }
 
