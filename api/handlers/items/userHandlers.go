@@ -3,10 +3,11 @@ package handlers
 import (
 	"encoding/json"
 	"fmt"
+	"hireforwork-server/db"
 	"hireforwork-server/interfaces"
 	"hireforwork-server/models"
 	service "hireforwork-server/service/modules"
-	"hireforwork-server/service/modules/auth"
+	auth "hireforwork-server/service/modules/auth"
 	"hireforwork-server/utils"
 	"io/ioutil"
 	"net/http"
@@ -29,8 +30,16 @@ var resumeAllowFile = map[string]bool{
 }
 
 type UserHandler struct {
-	UserService *service.UserService
-	AuthService *auth.AuthService
+	UserService         *service.UserService
+	CareerLoginStrategy auth.LoginStrategy
+}
+
+func NewUserHandler(dbInstance *db.DB) *UserHandler {
+	authService := auth.NewAuthService(dbInstance)
+	return &UserHandler{
+		UserService:         service.NewUserService(dbInstance),
+		CareerLoginStrategy: auth.NewCareerLoginStrategy(authService),
+	}
 }
 
 func (h *UserHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -91,16 +100,6 @@ func (h *UserHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 				h.GetAppliedJob(w, r)
 				return
 			}
-		// case "/careers/" + vars["id"] + "/save":
-		// 	if r.Method == http.MethodPost {
-		// 		h.SaveJob(w, r)
-		// 		return
-		// 	}
-		// case "/careers/" + vars["id"] + "/remove-save":
-		// 	if r.Method == http.MethodPost {
-		// 		h.RemoveSaveJob(w, r)
-		// 		return
-		// 	}
 		case "/careers/" + vars["id"] + "/upload-image":
 			if r.Method == http.MethodPost {
 				h.UploadImage(w, r)
@@ -281,7 +280,7 @@ func (h *UserHandler) Login(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Invaild request", http.StatusBadRequest)
 	}
 	if credential.Role == "CAREER" {
-		response, err := h.AuthService.LoginForCareer(credential)
+		response, err := h.CareerLoginStrategy.Login(credential)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusUnauthorized)
 			return

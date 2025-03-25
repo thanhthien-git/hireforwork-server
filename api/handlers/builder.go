@@ -14,6 +14,7 @@ import (
 type GenericHandler interface {
 	ServeHTTP(w http.ResponseWriter, r *http.Request)
 }
+
 type BaseHandler struct {
 	services *service.AppServices
 	db       *db.DB
@@ -25,16 +26,26 @@ type BaseHandler struct {
   - Makes it easy to create complex handlers
   - Provides a flexible way to configure handlers
 */
-type HandlerBuilder struct {
+// HandlerBuilder is the Abstract Builder interface
+type HandlerBuilder interface {
+	WithServices(services *service.AppServices) HandlerBuilder
+	WithHandlerType(handlerType string, dbInstance *db.DB) HandlerBuilder
+	Build() GenericHandler
+}
+
+// ConcreteHandlerBuilder is the Concrete Builder implementation
+type ConcreteHandlerBuilder struct {
 	handler *GenericHandler
 	service *service.AppServices
 }
+
 type HandlerConfig struct {
-	HandlerType    reflect.Type
-	ServiceName    string
-	ServiceType    reflect.Type
-	RequiresAuth   bool
-	FallbackCreate func(*db.DB) interface{}
+	HandlerType      reflect.Type
+	ServiceName      string
+	ServiceType      reflect.Type
+	RequiresAuth     bool
+	FallbackCreate   func(*db.DB) interface{}
+	AdditionalFields map[string]func(*db.DB) interface{}
 }
 
 var handlerConfigs = map[string]HandlerConfig{
@@ -48,12 +59,22 @@ var handlerConfigs = map[string]HandlerConfig{
 		ServiceName:  "company",
 		ServiceType:  reflect.TypeOf(&modules.CompanyService{}),
 		RequiresAuth: true,
+		AdditionalFields: map[string]func(*db.DB) interface{}{
+			"LoginStrategy": func(db *db.DB) interface{} {
+				return auth.NewCompanyLoginStrategy(auth.NewAuthService(db))
+			},
+		},
 	},
 	"career": {
 		HandlerType:  reflect.TypeOf(&handlers.UserHandler{}),
 		ServiceName:  "career",
 		ServiceType:  reflect.TypeOf(&modules.UserService{}),
 		RequiresAuth: true,
+		AdditionalFields: map[string]func(*db.DB) interface{}{
+			"LoginStrategy": func(db *db.DB) interface{} {
+				return auth.NewCareerLoginStrategy(auth.NewAuthService(db))
+			},
+		},
 	},
 	"tech": {
 		HandlerType:    reflect.TypeOf(&handlers.TechHandler{}),
@@ -74,12 +95,6 @@ var handlerConfigs = map[string]HandlerConfig{
 	},
 }
 
-// Simple Factory  Pattern
-/*
-1. function creates handlers based on configuration
-2. uses reflection to set up handler dependencies
-3. uses dependency injection to inject services into handlers
-*/
 func createHandler(config HandlerConfig, services *service.AppServices, db *db.DB) GenericHandler {
 	handlerValue := reflect.New(config.HandlerType.Elem())
 	handler := handlerValue.Interface().(GenericHandler)
@@ -118,20 +133,43 @@ func createHandler(config HandlerConfig, services *service.AppServices, db *db.D
 		}
 	}
 
+	// Inject additional fields
+	if config.AdditionalFields != nil {
+		for fieldName, creator := range config.AdditionalFields {
+			field := handlerValue.Elem().FieldByName(fieldName)
+			if field.IsValid() && field.CanSet() {
+				field.Set(reflect.ValueOf(creator(db)))
+			}
+		}
+	}
+
 	return handler
 }
 
-func NewHandlerBuilder(services *service.AppServices, handlerType string, dbInstance *db.DB) *HandlerBuilder {
-	var handler GenericHandler
-	if config, exists := handlerConfigs[handlerType]; exists {
-		handler = createHandler(config, services, dbInstance)
-	}
-	return &HandlerBuilder{
-		handler: &handler,
-		service: services,
-	}
+// NewHandlerBuilder creates a new concrete builder instance
+func NewHandlerBuilder() HandlerBuilder {
+	return &ConcreteHandlerBuilder{}
 }
 
-func (b *HandlerBuilder) Build() GenericHandler {
+// WithServices sets the services for the handler
+func (b *ConcreteHandlerBuilder) WithServices(services *service.AppServices) HandlerBuilder {
+	b.service = services
+	return b
+}
+
+// WithHandlerType sets the handler type and creates the handler
+func (b *ConcreteHandlerBuilder) WithHandlerType(handlerType string, dbInstance *db.DB) HandlerBuilder {
+	if config, exists := handlerConfigs[handlerType]; exists {
+		handler := createHandler(config, b.service, dbInstance)
+		b.handler = &handler
+	}
+	return b
+}
+
+// Build returns the constructed handler
+func (b *ConcreteHandlerBuilder) Build() GenericHandler {
+	if b.handler == nil {
+		return nil
+	}
 	return *b.handler
 }

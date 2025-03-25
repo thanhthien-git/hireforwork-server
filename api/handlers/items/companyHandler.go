@@ -19,18 +19,19 @@ import (
 
 type CompanyHandler struct {
 	CompanyService *service.CompanyService
-	AuthService    *auth.AuthService
+	LoginStrategy  auth.LoginStrategy
 }
 
 func NewCompanyHandler(dbInstance *db.DB) *CompanyHandler {
+	authService := auth.NewAuthService(dbInstance)
 	return &CompanyHandler{
 		CompanyService: service.NewCompanyService(dbInstance),
-		AuthService:    auth.NewAuthService(dbInstance),
+		LoginStrategy:  auth.NewCompanyLoginStrategy(authService),
 	}
 }
+
 func (h *CompanyHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
-	fmt.Println(r.URL)
 	// Public routes
 	publicRoutes := map[string]map[string]http.HandlerFunc{
 		"GET": {
@@ -40,7 +41,7 @@ func (h *CompanyHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			"/companies/get-job/{id}": h.GetJobsByCompany,
 		},
 		"POST": {
-			"/companies/auth/login":           h.LoginCompany,
+			"/companies/auth/login":           h.Login,
 			"/companies/create":               h.CreateCompany,
 			"/request-password-reset-company": h.RequestPasswordCompanyResetHandler,
 			"/reset-password-company":         h.ResetPasswordCompanyHandler,
@@ -187,17 +188,17 @@ func (h *CompanyHandler) UpdateCompanyByID(w http.ResponseWriter, r *http.Reques
 	}
 }
 
-func (h *CompanyHandler) LoginCompany(w http.ResponseWriter, r *http.Request) {
+func (h *CompanyHandler) Login(w http.ResponseWriter, r *http.Request) {
 	var credential auth.Credentials
 
 	err := json.NewDecoder(r.Body).Decode(&credential)
-
 	if err != nil {
-		http.Error(w, "Invaild request", http.StatusBadRequest)
+		http.Error(w, "Invalid request", http.StatusBadRequest)
+		return
 	}
 
 	if credential.Role == "COMPANY" {
-		response, err := h.AuthService.LoginForCompany(credential)
+		response, err := h.LoginStrategy.Login(credential)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusUnauthorized)
 			return
@@ -205,7 +206,6 @@ func (h *CompanyHandler) LoginCompany(w http.ResponseWriter, r *http.Request) {
 
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
-
 		json.NewEncoder(w).Encode(response)
 	}
 }

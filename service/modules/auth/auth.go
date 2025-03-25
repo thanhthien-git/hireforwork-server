@@ -15,6 +15,18 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
+type LoginStrategy interface {
+	Login(credential Credentials) (LoginResponse, error)
+}
+
+type CareerLoginStrategy struct {
+	authService *AuthService
+}
+
+type CompanyLoginStrategy struct {
+	authService *AuthService
+}
+
 // instance for authservice
 func NewAuthService(dbInstance *db.DB) *AuthService {
 	collections := dbInstance.GetCollections([]string{"Career", "Company"})
@@ -75,10 +87,10 @@ func (a *AuthService) CheckPasswordHash(hashedPassword, password string) bool {
 }
 
 // Login
-func (a *AuthService) LoginForCareer(credential Credentials) (LoginResponse, error) {
+func (c *CareerLoginStrategy) Login(credential Credentials) (LoginResponse, error) {
 	var career models.User
 
-	err := a.userCollection.FindOne(context.Background(), bson.D{
+	err := c.authService.userCollection.FindOne(context.Background(), bson.D{
 		{"careerEmail", credential.Username},
 		{"isDeleted", false},
 	}).Decode(&career)
@@ -86,10 +98,10 @@ func (a *AuthService) LoginForCareer(credential Credentials) (LoginResponse, err
 		return LoginResponse{}, errors.New("Tên đăng nhập hoặc tài khoản sai")
 	}
 
-	if !a.CheckPasswordHash(career.Password, credential.Password) {
+	if !c.authService.CheckPasswordHash(career.Password, credential.Password) {
 		return LoginResponse{}, errors.New("Tên đăng nhập hoặc tài khoản sai")
 	}
-	token, _ := a.GenerateToken(career.CareerEmail, career.Id, career.Role)
+	token, _ := c.authService.GenerateToken(career.CareerEmail, career.Id, career.Role)
 
 	response := LoginResponse{
 		Token: token,
@@ -98,10 +110,10 @@ func (a *AuthService) LoginForCareer(credential Credentials) (LoginResponse, err
 	return response, nil
 }
 
-func (a *AuthService) LoginForCompany(credential Credentials) (LoginResponse, error) {
+func (co *CompanyLoginStrategy) Login(credential Credentials) (LoginResponse, error) {
 	var company models.Company
 
-	err := a.companyCollection.FindOne(context.Background(), bson.D{
+	err := co.authService.companyCollection.FindOne(context.Background(), bson.D{
 		{"contact.companyEmail", credential.Username},
 		{"isDeleted", false},
 	}).Decode(&company)
@@ -109,10 +121,10 @@ func (a *AuthService) LoginForCompany(credential Credentials) (LoginResponse, er
 	if err != nil {
 		return LoginResponse{}, errors.New("Invalid username or password")
 	}
-	if !a.CheckPasswordHash(company.Password, credential.Password) {
+	if !co.authService.CheckPasswordHash(company.Password, credential.Password) {
 		return LoginResponse{}, errors.New("Wrong password")
 	}
-	token, _ := a.GenerateToken(company.Contact.CompanyEmail, company.Id, "COMPANY")
+	token, _ := co.authService.GenerateToken(company.Contact.CompanyEmail, company.Id, "COMPANY")
 
 	response := LoginResponse{
 		Token: token,
@@ -120,49 +132,16 @@ func (a *AuthService) LoginForCompany(credential Credentials) (LoginResponse, er
 	return response, nil
 }
 
-// refactor login function
-func (a *AuthService) Login(credential Credentials, config LoginConfig) (LoginResponse, error) {
-	var entity interface{} = config.Model
+// Login sử dụng Strategy Pattern
+func (a *AuthService) Login(credential Credentials, strategy LoginStrategy) (LoginResponse, error) {
+	return strategy.Login(credential)
+}
 
-	err := config.Collection.FindOne(context.Background(), bson.D{
-		{config.UsernameField, credential.Username},
-		{"isDeleted", false},
-	}).Decode(entity)
+// Hàm tạo Strategy
+func NewCareerLoginStrategy(authService *AuthService) *CareerLoginStrategy {
+	return &CareerLoginStrategy{authService: authService}
+}
 
-	if err != nil {
-		return LoginResponse{}, errors.New("Invalid username or password")
-	}
-
-	var password string
-	var id primitive.ObjectID
-	var username string
-
-	//check user type for token creation
-	switch v := entity.(type) {
-	case *models.User:
-		password = v.Password
-		id = v.Id
-		config.Role = v.Role
-	case *models.Company:
-		password = v.Password
-		username = v.Contact.CompanyEmail
-		config.Role = "COMPANY"
-	default:
-		return LoginResponse{}, errors.New("Unsupported entity type")
-	}
-
-	if !a.CheckPasswordHash(password, credential.Password) {
-		return LoginResponse{}, errors.New("Invalid username or password")
-	}
-
-	//create token
-	token, err := a.GenerateToken(username, id, config.Role)
-	if err != nil {
-		return LoginResponse{}, err
-	}
-
-	response := LoginResponse{
-		Token: token,
-	}
-	return response, nil
+func NewCompanyLoginStrategy(authService *AuthService) *CompanyLoginStrategy {
+	return &CompanyLoginStrategy{authService: authService}
 }

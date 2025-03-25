@@ -228,7 +228,6 @@ func (j *JobRepository) GetJob(page, pageSize int, filter interfaces.IJobFilter)
 }
 
 func (j *JobRepository) CreateJob(job models.Jobs) (models.Jobs, error) {
-	fmt.Println("Creating job...")
 	currentTime := time.Now()
 	job.Id = primitive.NewObjectID()
 	job.CreateAt = primitive.NewDateTimeFromTime(currentTime)

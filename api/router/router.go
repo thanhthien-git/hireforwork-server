@@ -57,7 +57,10 @@ func (b *RouterBuilder) BuildRoutes() *mux.Router {
 
 	// Register all routes
 	for _, route := range routes {
-		handler := handlers.NewHandlerBuilder(b.services, route.Handler, b.db).Build()
+		handler := handlers.NewHandlerBuilder().
+			WithServices(b.services).
+			WithHandlerType(route.Handler, b.db).
+			Build()
 		if handler != nil {
 			var finalHandler http.Handler = handler
 

@@ -49,7 +49,7 @@ func (uow *UnitOfWork) Commit() error {
 			_ = session.AbortTransaction(sc)
 			return fmt.Errorf("Error committing transaction: %v", err)
 		}
-
+		uow.changes = nil
 		return nil
 	})
 }
